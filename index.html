@@ -19,7 +19,7 @@ main{max-width:1250px;margin:auto;padding:20px}h1{font-size:22px;margin:0 0 5px}
 <body>
 <main>
   <h1>MM — Rolling 4H / 6H / 12H Price Performance Test</h1>
-  <div class="sub">Independent prototype · Binance USDⓈ-M USDT perpetuals · Top 50 by 24H quote volume</div>
+  <div class="sub">Independent prototype · Binance USDⓈ-M USDT perpetuals · All eligible pairs ranked by price performance</div>
   <section class="panel">
     <div class="controls">
       <button id="scanBtn">Scan now</button>
@@ -41,7 +41,7 @@ main{max-width:1250px;margin:auto;padding:20px}h1{font-size:22px;margin:0 0 5px}
       <tbody id="results"><tr><td class="empty" colspan="9">No results yet.</td></tr></tbody>
     </table>
   </section>
-  <div class="note">Data source: Binance public Futures market-data endpoints. No API key and no trading functions. To limit API load, the prototype scans only the top 50 eligible pairs, uses one 1-minute candle-history request per pair for all three rolling windows, a small worker pool, and defaults to a 60-second refresh. It does not call the main MM scanner.</div>
+  <div class="note">Data source: Binance public Futures market-data endpoints. No API key and no trading functions. The prototype scans all eligible USDT perpetual pairs and ranks them by rolling 4H performance. Each pair uses one 1-minute candle-history request for all three rolling windows. A small worker pool and 60-second default refresh help limit API load. 24H quote volume is displayed as context, not used to select pairs. It does not call the main MM scanner.</div>
 </main>
 <script>
 const API='https://fapi.binance.com';
@@ -64,7 +64,7 @@ async function workerPool(items,limit,fn){
 }
 async function scan(){
   if(busy)return;
-  busy=true;$('scanBtn').disabled=true;$('status').textContent='Loading Binance market data…';
+  busy=true;$('scanBtn').disabled=true;$('status').textContent='Loading all eligible Binance USDT perpetual pairs…';
   try{
     const [exchangeInfo,tickers,server]=await Promise.all([
       getJson(API+'/fapi/v1/exchangeInfo'),
@@ -72,14 +72,15 @@ async function scan(){
       getJson(API+'/fapi/v1/time')
     ]);
     const eligible=new Set(exchangeInfo.symbols.filter(s=>s.status==='TRADING'&&s.contractType==='PERPETUAL'&&s.quoteAsset==='USDT').map(s=>s.symbol));
-    const top=tickers.filter(t=>eligible.has(t.symbol)&&Number(t.quoteVolume)>0).sort((a,b)=>Number(b.quoteVolume)-Number(a.quoteVolume)).slice(0,50);
-    $('pairCount').textContent=top.length;
+    const allPairs=tickers.filter(t=>eligible.has(t.symbol)&&Number(t.quoteVolume)>0);
+    const top=allPairs;
+    $('pairCount').textContent=top.length+' (all eligible)';
     const serverTime=Number(server.serverTime);
     const targets={4:serverTime-4*60*60*1000,6:serverTime-6*60*60*1000,12:serverTime-12*60*60*1000};
     const historyStart=targets[12]-2*60*1000;
     const rows=[],failures=[];
     let completed=0;
-    $('status').textContent='Calculating rolling 4H, 6H and 12H performance for '+top.length+' pairs…';
+    $('status').textContent='Calculating rolling 4H, 6H and 12H performance for all '+top.length+' eligible pairs…';
     await workerPool(top,5,async t=>{
       try{
         const url=API+'/fapi/v1/klines?symbol='+encodeURIComponent(t.symbol)+'&interval=1m&startTime='+Math.floor(historyStart)+'&limit=723';
@@ -107,7 +108,7 @@ async function scan(){
     }).join(''):'<tr><td class="empty" colspan="9">No readings returned. Try again later.</td></tr>';
     $('successCount').textContent=rows.length;$('failedCount').textContent=failures.length;
     $('lastUpdated').textContent='Updated '+new Date().toLocaleTimeString();
-    $('status').textContent='Scan complete. '+rows.length+' successful 4H/6H/12H readings'+(failures.length?'; '+failures.length+' pairs could not be read.':'.');
+    $('status').textContent='Scan complete. '+rows.length+' successful 4H/6H/12H readings from all eligible pairs'+(failures.length?'; '+failures.length+' pairs could not be read.':'.');
   }catch(e){
     $('status').textContent='Scan failed: '+e.message+'. Check connectivity or try again shortly.';
   }finally{
