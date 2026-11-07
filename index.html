@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MM — Rolling 4H Price Performance Test</title>
+<title>MM — Rolling 4H / 6H / 12H Price Performance Test</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1020;--panel:#131b2e;--line:#26334d;--muted:#91a0b8;--text:#edf3ff;--green:#31d69a;--red:#ff687d;--blue:#75a7ff}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
@@ -18,7 +18,7 @@ main{max-width:1250px;margin:auto;padding:20px}h1{font-size:22px;margin:0 0 5px}
 </head>
 <body>
 <main>
-  <h1>MM — Rolling 4H Price Performance Test</h1>
+  <h1>MM — Rolling 4H / 6H / 12H Price Performance Test</h1>
   <div class="sub">Independent prototype · Binance USDⓈ-M USDT perpetuals · Top 50 by 24H quote volume</div>
   <section class="panel">
     <div class="controls">
@@ -29,19 +29,19 @@ main{max-width:1250px;margin:auto;padding:20px}h1{font-size:22px;margin:0 0 5px}
     </div>
     <div class="statrow">
       <span>Pairs: <strong id="pairCount">—</strong></span>
-      <span>Successful 4H readings: <strong id="successCount">—</strong></span>
+      <span>Successful readings: <strong id="successCount">—</strong></span>
       <span>Failed readings: <strong id="failedCount">—</strong></span>
     </div>
     <div class="status" id="status">Ready. Select Scan now to begin.</div>
-    <div class="note">4H change = (latest price − reference price) ÷ reference price × 100. Reference price is the close of the latest completed 1-minute candle at or before the timestamp four hours ago, so the reference can be up to one minute older than exactly four hours. 24H change is Binance's rolling 24-hour ticker value.</div>
+    <div class="note">Rolling 4H, 6H and 12H changes = (latest price − reference price) ÷ reference price × 100. Each reference is the close of the latest completed 1-minute candle at or before its lookback timestamp, so it can be up to one minute older than the exact target. 24H change is Binance's rolling 24-hour ticker value.</div>
   </section>
   <section class="panel tablewrap">
     <table>
-      <thead><tr><th>Symbol</th><th>Current price</th><th>Rolling 4H</th><th>Rolling 24H</th><th>4H reference price</th><th>Reference candle (UTC)</th><th>24H quote volume</th></tr></thead>
-      <tbody id="results"><tr><td class="empty" colspan="7">No results yet.</td></tr></tbody>
+      <thead><tr><th>Symbol</th><th>Current price</th><th>Rolling 4H</th><th>Rolling 6H</th><th>Rolling 12H</th><th>Rolling 24H</th><th>4H reference price</th><th>4H reference candle (UTC)</th><th>24H quote volume</th></tr></thead>
+      <tbody id="results"><tr><td class="empty" colspan="9">No results yet.</td></tr></tbody>
     </table>
   </section>
-  <div class="note">Data source: Binance public Futures market-data endpoints. No API key and no trading functions. To limit API load, the prototype scans only the top 50 eligible pairs, uses a small worker pool, and defaults to a 60-second refresh. It does not call the main MM scanner.</div>
+  <div class="note">Data source: Binance public Futures market-data endpoints. No API key and no trading functions. To limit API load, the prototype scans only the top 50 eligible pairs, uses one 1-minute candle-history request per pair for all three rolling windows, a small worker pool, and defaults to a 60-second refresh. It does not call the main MM scanner.</div>
 </main>
 <script>
 const API='https://fapi.binance.com';
@@ -74,31 +74,40 @@ async function scan(){
     const eligible=new Set(exchangeInfo.symbols.filter(s=>s.status==='TRADING'&&s.contractType==='PERPETUAL'&&s.quoteAsset==='USDT').map(s=>s.symbol));
     const top=tickers.filter(t=>eligible.has(t.symbol)&&Number(t.quoteVolume)>0).sort((a,b)=>Number(b.quoteVolume)-Number(a.quoteVolume)).slice(0,50);
     $('pairCount').textContent=top.length;
-    const target=Number(server.serverTime)-4*60*60*1000;
+    const serverTime=Number(server.serverTime);
+    const targets={4:serverTime-4*60*60*1000,6:serverTime-6*60*60*1000,12:serverTime-12*60*60*1000};
+    const historyStart=targets[12]-2*60*1000;
     const rows=[],failures=[];
     let completed=0;
-    $('status').textContent='Calculating rolling 4H performance for '+top.length+' pairs…';
+    $('status').textContent='Calculating rolling 4H, 6H and 12H performance for '+top.length+' pairs…';
     await workerPool(top,5,async t=>{
       try{
-        const url=API+'/fapi/v1/klines?symbol='+encodeURIComponent(t.symbol)+'&interval=1m&endTime='+Math.floor(target)+'&limit=3';
+        const url=API+'/fapi/v1/klines?symbol='+encodeURIComponent(t.symbol)+'&interval=1m&startTime='+Math.floor(historyStart)+'&limit=723';
         const candles=await getJson(url);
-        const valid=candles.filter(k=>Number(k[6])<=target).sort((a,b)=>Number(b[6])-Number(a[6]));
-        if(!valid.length)throw new Error('No completed reference candle');
-        const ref=valid[0],refPrice=Number(ref[4]),current=Number(t.lastPrice);
-        if(!(refPrice>0&&current>0))throw new Error('Invalid price');
-        rows.push({symbol:t.symbol,current,refPrice,change:(current-refPrice)/refPrice*100,change24:Number(t.priceChangePercent),volume:Number(t.quoteVolume),refTime:Number(ref[6])});
+        const refs={};
+        for(const hours of [4,6,12]){
+          const target=targets[hours];
+          const valid=candles.filter(k=>Number(k[6])<=target);
+          if(!valid.length)throw new Error('Missing '+hours+'H reference candle');
+          const ref=valid[valid.length-1],price=Number(ref[4]);
+          if(!(price>0))throw new Error('Invalid '+hours+'H reference price');
+          refs[hours]={price,time:Number(ref[6]),change:(Number(t.lastPrice)-price)/price*100};
+        }
+        const current=Number(t.lastPrice);
+        if(!(current>0))throw new Error('Invalid current price');
+        rows.push({symbol:t.symbol,current,refs,change24:Number(t.priceChangePercent),volume:Number(t.quoteVolume)});
       }catch(e){failures.push(t.symbol);}
       completed++;
       $('status').textContent='Processed '+completed+' / '+top.length+' pairs…';
     });
-    rows.sort((a,b)=>b.change-a.change);
+    rows.sort((a,b)=>b.refs[4].change-a.refs[4].change);
     $('results').innerHTML=rows.length?rows.map(r=>{
-      const c=r.change>=0?'positive':'negative',c24=r.change24>=0?'positive':'negative';
-      return '<tr><td class="symbol">'+r.symbol+'</td><td>'+fmtPrice(r.current)+'</td><td class="'+c+'">'+fmtPct(r.change)+'</td><td class="'+c24+'">'+fmtPct(r.change24)+'</td><td>'+fmtPrice(r.refPrice)+'</td><td class="muted">'+new Date(r.refTime).toISOString().replace('T',' ').replace('.000Z','')+'</td><td>'+fmtVol(r.volume)+'</td></tr>';
-    }).join(''):'<tr><td class="empty" colspan="7">No readings returned. Try again later.</td></tr>';
+      const c4=r.refs[4].change>=0?'positive':'negative',c6=r.refs[6].change>=0?'positive':'negative',c12=r.refs[12].change>=0?'positive':'negative',c24=r.change24>=0?'positive':'negative';
+      return '<tr><td class="symbol">'+r.symbol+'</td><td>'+fmtPrice(r.current)+'</td><td class="'+c4+'">'+fmtPct(r.refs[4].change)+'</td><td class="'+c6+'">'+fmtPct(r.refs[6].change)+'</td><td class="'+c12+'">'+fmtPct(r.refs[12].change)+'</td><td class="'+c24+'">'+fmtPct(r.change24)+'</td><td>'+fmtPrice(r.refs[4].price)+'</td><td class="muted">'+new Date(r.refs[4].time).toISOString().replace('T',' ').replace('.000Z','')+'</td><td>'+fmtVol(r.volume)+'</td></tr>';
+    }).join(''):'<tr><td class="empty" colspan="9">No readings returned. Try again later.</td></tr>';
     $('successCount').textContent=rows.length;$('failedCount').textContent=failures.length;
     $('lastUpdated').textContent='Updated '+new Date().toLocaleTimeString();
-    $('status').textContent='Scan complete. '+rows.length+' successful readings'+(failures.length?'; '+failures.length+' pairs could not be read.':' .');
+    $('status').textContent='Scan complete. '+rows.length+' successful 4H/6H/12H readings'+(failures.length?'; '+failures.length+' pairs could not be read.':'.');
   }catch(e){
     $('status').textContent='Scan failed: '+e.message+'. Check connectivity or try again shortly.';
   }finally{
