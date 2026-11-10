@@ -222,6 +222,7 @@ main{max-width:1800px;width:100%}
    <label for="marketwide5mMinPct" style="margin:0;white-space:nowrap">Min 5m change</label>
    <input id="marketwide5mMinPct" type="number" min="0" max="100" step="0.1" value="0.5" style="width:72px">
    <label for="marketwide5mMinRsi" style="margin:0;white-space:nowrap">Min RSI</label>
+   <label class="check" for="marketwide5mRequireST" style="margin:0;white-space:nowrap"><input id="marketwide5mRequireST" type="checkbox"> Require 5m ST positive</label>
    <input id="marketwide5mMinRsi" type="number" min="0" max="100" step="1" value="60" style="width:62px">
    <button id="marketwide5mSound" class="secondary" type="button" style="width:auto">Sound: OFF</button>
    <label for="marketwide5mVolume" style="margin:0;white-space:nowrap">Volume</label>
@@ -866,8 +867,8 @@ function marketwide5mPlayBoop(){
 }
 function evaluateMarketwide5m(symbol,initial=false){
  const state=marketwide5mStates.get(symbol);if(!state||!Array.isArray(state.rows)||state.rows.length<35)return;
- const rows=state.rows,m=macd(rows),hist=m.hist,candleLimit=marketwide5mCandleLimit(),age=eventAge(hist,candleLimit,"bull"),rv=rsi(rows,14),pct=marketwide5mPct(rows);
- if(age<0||age>=candleLimit||!(Number.isFinite(rv)&&rv>=marketwide5mMinRsi())||!Number.isFinite(pct)||pct<marketwide5mMinChange()){
+ const rows=state.rows,m=macd(rows),hist=m.hist,candleLimit=marketwide5mCandleLimit(),age=eventAge(hist,candleLimit,"bull"),rv=rsi(rows,14),pct=marketwide5mPct(rows),requireST=$("marketwide5mRequireST")?.checked===true,st5m=requireST?supertrendInfo(rows,10,3):null;
+ if(age<0||age>=candleLimit||!(Number.isFinite(rv)&&rv>=marketwide5mMinRsi())||!Number.isFinite(pct)||pct<marketwide5mMinChange()||(requireST&&(!st5m||st5m.trend!==1))){
   const prior=marketwide5mSignals.get(symbol);
   if(prior){marketwide5mSignals.delete(symbol);renderMarketwide5m();}
   return;
@@ -925,6 +926,7 @@ $("marketwide5mSound").addEventListener("click",()=>{marketwide5mSoundOn=!market
 $("marketwide5mVolume").addEventListener("input",()=>{$("marketwide5mVolumeLabel").textContent=$("marketwide5mVolume").value+"%";});
 $("marketwide5mExpand").addEventListener("click",()=>{marketwide5mExpanded=!marketwide5mExpanded;renderMarketwide5m();});
 ["marketwide5mCandleLimit","marketwide5mMinPct","marketwide5mMinRsi"].forEach(id=>$(id).addEventListener("change",()=>{if(id==="marketwide5mCandleLimit")$(id).value=marketwide5mCandleLimit();else if(id==="marketwide5mMinPct")$(id).value=marketwide5mMinChange();else $(id).value=marketwide5mMinRsi();for(const symbol of marketwide5mStates.keys())evaluateMarketwide5m(symbol,true);renderMarketwide5m();}));
+$("marketwide5mRequireST").addEventListener("change",()=>{for(const symbol of marketwide5mStates.keys())evaluateMarketwide5m(symbol,true);renderMarketwide5m();});
 /* Move the existing minimum-volume control into one compact Volume tab without changing its ID or value. */
 const minVolControl=$("minVol"),pcMinVolControl=$("pcMinVol");if(minVolControl&&$("volumeControlsBody")){const label=minVolControl.parentElement.querySelector("label");if(label)label.textContent="Green Tracker — minimum 24h quote volume (USDT)";$("volumeControlsBody").appendChild(minVolControl.parentElement);}if(pcMinVolControl&&$("volumeControlsBody")){const label=pcMinVolControl.parentElement.querySelector("label");if(label)label.textContent="Price Change — minimum 24h quote volume (USDT)";$("volumeControlsBody").appendChild(pcMinVolControl.parentElement);}
 
