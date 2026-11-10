@@ -1041,7 +1041,33 @@ function pcAutoToggle(){if(pcAutoOn){pcAutoOn=false;if(pcTimer)clearTimeout(pcTi
 function pcTab(name){const g=name==="green";$("greenTrackerView").hidden=!g;$("priceTracker").hidden=g;$("greenTabBtn").classList.toggle("active",g);$("priceTabBtn").classList.toggle("active",!g);$("greenTabBtn").classList.toggle("secondary",!g);$("priceTabBtn").classList.toggle("secondary",g);}
 $("greenTabBtn").addEventListener("click",()=>pcTab("green"));$("priceTabBtn").addEventListener("click",()=>pcTab("price"));$("pcScan").addEventListener("click",pcRun);$("pcAuto").addEventListener("click",pcAutoToggle);pcInit();restoreLastSettings();$("run15mCoverageDiagnostic").addEventListener("click",render15mCoverageDiagnostic);
 
-specialFallbackTimer=setInterval(specialCandidateRestFallback,60000);setInterval(()=>{const now=Date.now();if(twentyPctWatchSymbols.size&&twentyPctLastMessageAt&&now-twentyPctLastMessageAt>30000){const status=$("twentyPctStatus");if(status)status.textContent="LIVE STREAM STALE — no candle updates for "+Math.round((now-twentyPctLastMessageAt)/1000)+"s; reconnecting if the socket closes.";}},15000);$("universeSearch").addEventListener("input",renderUniverse);buildPanels();if(!$("showOiDollar").checked)document.querySelectorAll(".oi-dollar-cell").forEach(el=>el.hidden=true);renderDiagnostics();renderUniverse();
+specialFallbackTimer=setInterval(specialCandidateRestFallback,60000);setInterval(()=>{const now=Date.now();if(twentyPctWatchSymbols.size&&twentyPctLastMessageAt&&now-twentyPctLastMessageAt>30000){const status=$("twentyPctStatus");if(status)status.textContent="LIVE STREAM STALE — no candle updates for "+Math.round((now-twentyPctLastMessageAt)/1000)+"s; reconnecting if the socket closes.";}},15000);
+function installVolumeFilterAudit(){
+ const host=$("diagnosticsPanel");if(!host||$("volumeFilterAudit"))return;
+ const details=document.createElement("details");details.id="volumeFilterAudit";details.style.cssText="margin-top:14px;border-top:1px solid var(--line);padding-top:12px";
+ details.innerHTML='<summary style="cursor:pointer;color:#ffd166;font-weight:800">24H VOLUME FILTER AUDIT — WHY DID THE UNIVERSE SHRINK?</summary><p class="small">Uses the exact exchangeInfo and 24-hour ticker responses already loaded by the last scan. No additional Binance requests, streams or polling.</p><button id="runVolumeFilterAudit" type="button" class="secondary">Run $2M volume exclusion audit</button><div id="volumeAuditSummary" class="diaggrid"></div><div id="volumeAuditMeta" class="small" style="margin:7px 0">Run a scan first, then run this audit.</div><div class="tablewrap" style="max-height:440px;overflow:auto"><table style="min-width:1050px"><thead><tr><th>Symbol</th><th>Contract</th><th>Quote</th><th>Exchange status</th><th>24H quote volume (USDT)</th><th>2M threshold</th><th>Scan selection</th><th>Reason</th></tr></thead><tbody id="volumeAuditRows"><tr><td colspan="8" class="empty">No audit run yet.</td></tr></tbody></table></div>';
+ host.appendChild(details);
+ $("runVolumeFilterAudit").addEventListener("click",renderVolumeFilterAudit);
+}
+function renderVolumeFilterAudit(){
+ const summary=$("volumeAuditSummary"),meta=$("volumeAuditMeta"),body=$("volumeAuditRows");
+ if(!diag.marketInventory||!diag.marketInventory.length){meta.textContent="No market inventory yet. Run Scan once first.";return;}
+ const threshold=2000000,scanThreshold=Math.max(0,Number($("minVol").value)||0),selected=new Set((diag.universe||[]).map(x=>x.symbol));
+ const rows=diag.marketInventory.filter(x=>x.status==="TRADING").map(x=>{
+  const hasVol=Number.isFinite(x.volume),pass=hasVol&&x.volume>=threshold,scanPass=hasVol&&x.volume>=scanThreshold,isSelected=selected.has(x.symbol);
+  let reason;if(!hasVol)reason="Ticker volume missing or invalid";else if(!pass)reason="Excluded by $2M 24H quote-volume threshold";else if(!scanPass)reason="Below current Green Tracker minimum volume";else if(!isSelected)reason="Passed volume; not selected by ranking / Top-N limit";else reason="Selected into detailed scan";
+  return {...x,hasVol,pass,scanPass,isSelected,reason};
+ });
+ const count=(fn)=>rows.filter(fn).length,eligible=rows.length,missing=count(x=>!x.hasVol),below=count(x=>x.hasVol&&!x.pass),above=count(x=>x.pass),selectedCount=count(x=>x.isSelected),passedScan=count(x=>x.scanPass);
+ const cards=[["Trading instruments",eligible],["24H volume ≥ $2M",above],["Below $2M",below],["Missing volume",missing],["Passed current scan volume filter",passedScan],["Selected for detailed scan",selectedCount],["Not selected after ranking / Top-N",Math.max(0,passedScan-selectedCount)]];
+ summary.innerHTML=cards.map(([label,value])=>'<div class="diagitem"><div class="diaglabel">'+label+'</div><div class="diagvalue">'+Number(value).toLocaleString()+'</div></div>').join("");
+ const scanMin=scanThreshold.toLocaleString(undefined,{maximumFractionDigits:0});
+ meta.textContent="Snapshot "+new Date().toLocaleTimeString()+" · Fixed Market-Wide 5M threshold: 2,000,000 USDT · Green Tracker minimum volume currently: "+scanMin+" USDT · Exchange universe = TRADING instruments across contract types and quote assets · ticker data reused from last scan.";
+ body.innerHTML=rows.slice().sort((a,b)=>(a.pass===b.pass?b.volume-a.volume:a.pass? -1:1)).map(x=>'<tr><td><b>'+esc(x.symbol)+'</b></td><td>'+esc(x.contractType)+'</td><td>'+esc(x.quoteAsset)+'</td><td>'+esc(x.status)+'</td><td>'+(x.hasVol?x.volume.toLocaleString(undefined,{maximumFractionDigits:0}):"—")+'</td><td class="'+(x.pass?"diaggood":"diagbad")+'">'+(x.pass?"PASS":"FAIL")+'</td><td>'+(x.isSelected?"SELECTED":x.scanPass?"PASSED VOLUME":"NOT PASSED")+'</td><td>'+esc(x.reason)+'</td></tr>').join("")||'<tr><td colspan="8" class="empty">No trading instruments found.</td></tr>';
+}
+installVolumeFilterAudit();
+
+$("universeSearch").addEventListener("input",renderUniverse);buildPanels();if(!$("showOiDollar").checked)document.querySelectorAll(".oi-dollar-cell").forEach(el=>el.hidden=true);renderDiagnostics();renderUniverse();
 })();
 </script>
 <script>
