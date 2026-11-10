@@ -287,7 +287,8 @@ const $=id=>document.getElementById(id), TFS=["1m","3m","5m","15m"];
 const hosts=["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com"];
 
 let hostIndex=0,lastRequest=0,activeRequests=0,pendingRequests=[],requestPumpTimer=null,timer=null,busy=false,countdownTimer=null,nextAt=0,autoActive=false,exchangeInfoCache=null,exchangeInfoAt=0,exchangeInfoPromise=null;
-const MAX_CONCURRENT_REQUESTS=5,MIN_REQUEST_START_GAP_MS=220;
+const MAX_CONCURRENT_REQUESTS=8,MIN_REQUEST_START_GAP_MS=60;
+function adaptiveRequestGapMs(){const weight=Number(diag.weight1m);if(!Number.isFinite(weight))return MIN_REQUEST_START_GAP_MS;if(weight>=1900)return 300;if(weight>=1600)return 180;if(weight>=1300)return 100;return MIN_REQUEST_START_GAP_MS;}
 const previous24hHigh=new Map(),fresh24hHighUntil=new Map(),universePeriodCache=new Map(),rollingOiHistory=new Map();
 const alertedCrossovers=new Set(),alertedQualified=new Set(),alertedEarlyMomentum=new Set();let earlyMomentumSound=false;const earlyMomentumHistory=[];const REVERSAL_TFS=["15m","30m","1h"],reversalStates=new Map(),reversalAlertHistory=Object.fromEntries(REVERSAL_TFS.map(tf=>[tf,[]])),reversalAlertKeys=new Set();let alertAudioContext=null;let twentyPctSoundEnabled=false,twentyPctSockets=[],twentyPctReconnectTimer=null,twentyPctWatchSymbols=new Set(),twentyPctReconnectAttempt=0,twentyPctLastMessageAt=0;const twentyPctOpenMap=new Map(),twentyPctLastPrices=new Map(),twentyPct15mData=new Map(),twentyPct24hChanges=new Map(),alerted20PctCandles=new Set(),twentyPctHistory=[];let specialMacdSoundEnabled=false,specialMacdSockets=[],specialMacdReconnectTimer=null,specialMacdCandidates=new Map(),specialMacdHistories=new Map(),specialMacdStates=new Map(),specialMacdAlertKeys=new Set(),specialMacdHistory=[],specialMacdReconnectAttempt=0,specialMacdLastMessageAt=0,specialFallbackTimer=null,specialFallbackBusy=false;const alertSoundEnabled={confirmedBull:false,confirmedBear:false,crossoverBull:false,crossoverBear:false};let latestResultAlert=null;
 function playAlertTone(tier,direction,tf){
@@ -596,7 +597,7 @@ let diagnosticsRenderPending=false;
 function queueDiagnosticsRender(){if(diagnosticsRenderPending)return;diagnosticsRenderPending=true;setTimeout(()=>{diagnosticsRenderPending=false;renderDiagnostics();},150);}
 function pumpRequests(){
  if(requestPumpTimer!==null||activeRequests>=MAX_CONCURRENT_REQUESTS||!pendingRequests.length)return;
- const gap=Math.max(0,MIN_REQUEST_START_GAP_MS-(Date.now()-lastRequest));
+ const gap=Math.max(0,adaptiveRequestGapMs()-(Date.now()-lastRequest));
  if(gap){requestPumpTimer=setTimeout(()=>{requestPumpTimer=null;pumpRequests();},gap);return;}
  const job=pendingRequests.shift();activeRequests++;lastRequest=Date.now();
  Promise.resolve().then(job.run).then(job.resolve,job.reject).finally(()=>{activeRequests--;pumpRequests();});
@@ -842,7 +843,7 @@ async function scan(){
 /* Independent market-wide 5m bullish crossover monitor.
    Uses the existing MACD/RSI functions and shared rate-limited Binance request queue. */
 let marketwide5mSymbols=[],marketwide5mInventoryKey="",marketwide5mSockets=[],marketwide5mSocketGeneration=0,marketwide5mStates=new Map(),marketwide5mSignals=new Map(),marketwide5mSeedBusy=false,marketwide5mSeedTimer=null,marketwide5mSoundOn=false,marketwide5mExpanded=false,marketwide5mLastBeepAt=0;
-const MARKETWIDE_5M_BATCH=40,MARKETWIDE_5M_SOCKET_BATCH=50;
+const MARKETWIDE_5M_BATCH=80,MARKETWIDE_5M_SOCKET_BATCH=50;
 function marketwide5mCandleLimit(){const el=$("marketwide5mCandleLimit"),n=Number(el&&el.value);return Number.isFinite(n)?Math.max(1,Math.min(20,Math.floor(n))):10;}
 function marketwide5mMinChange(){const el=$("marketwide5mMinPct"),n=Number(el&&el.value);return Number.isFinite(n)?Math.max(0,Math.min(100,n)):0.5;}
 function marketwide5mMinRsi(){const el=$("marketwide5mMinRsi"),n=Number(el&&el.value);return Number.isFinite(n)?Math.max(0,Math.min(100,n)):60;}
@@ -877,11 +878,15 @@ function evaluateMarketwide5m(symbol,initial=false){
  if(marketwide5mSignals.size>250){const oldest=[...marketwide5mSignals.values()].sort((a,b)=>a.at-b.at).slice(0,marketwide5mSignals.size-250);oldest.forEach(x=>marketwide5mSignals.delete(x.symbol));}
  renderMarketwide5m();if(!initial)marketwide5mPlayBoop();
 }
+function scheduleMarketwide5mEvaluation(symbol,state){
+ const now=Date.now(),elapsed=now-(state.lastEvalAt||0);if(state.evalTimer)return;
+ const delay=Math.max(0,500-elapsed);state.evalTimer=setTimeout(()=>{state.evalTimer=null;state.lastEvalAt=Date.now();if(marketwide5mStates.get(symbol)===state)evaluateMarketwide5m(symbol,false);},delay);
+}
 function processMarketwide5mKline(symbol,k){
  const state=marketwide5mStates.get(symbol);if(!state||!k||k.i!=="5m")return;
  const row=[Number(k.t),k.o,k.h,k.l,k.c,k.v,Number(k.T),k.q,Number(k.n),k.V,k.Q,k.B],last=state.rows[state.rows.length-1];
  if(last&&Number(last[0])===Number(k.t))state.rows[state.rows.length-1]=row;else{state.rows.push(row);if(state.rows.length>100)state.rows.shift();}
- evaluateMarketwide5m(symbol,false);
+ scheduleMarketwide5mEvaluation(symbol,state);
 }
 function openMarketwide5mSocket(batch,batchId,attempt=0,generation=marketwide5mSocketGeneration){
  if(!batch.length)return;let socket;
@@ -901,10 +906,10 @@ async function seedMarketwide5mBatch(){
  const pending=marketwide5mSymbols.filter(s=>!marketwide5mStates.has(s)&&(marketwide5mSeedFailures.get(s)||0)<3).slice(0,MARKETWIDE_5M_BATCH);
  if(!pending.length){renderMarketwide5m();return;}
  marketwide5mSeedBusy=true;renderMarketwide5m();let next=0,done=0;
- const worker=async()=>{while(true){const i=next++;if(i>=pending.length)return;const symbol=pending[i];try{const rows=await request("/fapi/v1/klines?symbol="+symbol+"&interval=5m&limit=100");if(marketwide5mSymbols.includes(symbol)&&Array.isArray(rows)&&rows.length>=35){marketwide5mStates.set(symbol,{rows});evaluateMarketwide5m(symbol,true);}else marketwide5mSeedFailures.set(symbol,(marketwide5mSeedFailures.get(symbol)||0)+1);}catch(e){marketwide5mSeedFailures.set(symbol,(marketwide5mSeedFailures.get(symbol)||0)+1);}done++;if(done%10===0||done===pending.length)renderMarketwide5m();}};
+ const worker=async()=>{while(true){const i=next++;if(i>=pending.length)return;const symbol=pending[i];try{const rows=await request("/fapi/v1/klines?symbol="+symbol+"&interval=5m&limit=99");if(marketwide5mSymbols.includes(symbol)&&Array.isArray(rows)&&rows.length>=35){marketwide5mStates.set(symbol,{rows});evaluateMarketwide5m(symbol,true);}else marketwide5mSeedFailures.set(symbol,(marketwide5mSeedFailures.get(symbol)||0)+1);}catch(e){marketwide5mSeedFailures.set(symbol,(marketwide5mSeedFailures.get(symbol)||0)+1);}done++;if(done%10===0||done===pending.length)renderMarketwide5m();}};
  await Promise.all(Array.from({length:Math.min(MAX_CONCURRENT_REQUESTS,pending.length)},worker));
  marketwide5mSeedBusy=false;renderMarketwide5m();
- if(marketwide5mSymbols.some(s=>!marketwide5mStates.has(s)&&(marketwide5mSeedFailures.get(s)||0)<3))marketwide5mSeedTimer=setTimeout(seedMarketwide5mBatch,8000);
+ if(marketwide5mSymbols.some(s=>!marketwide5mStates.has(s)&&(marketwide5mSeedFailures.get(s)||0)<3))marketwide5mSeedTimer=setTimeout(seedMarketwide5mBatch,0);
 }
 function startMarketwide5m(exchangeSymbols){
  const symbols=(exchangeSymbols||[]).filter(x=>x&&x.status==="TRADING").map(x=>x.symbol).filter(Boolean).sort(),key=symbols.join("|");
