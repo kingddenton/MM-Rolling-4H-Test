@@ -225,6 +225,8 @@ main{max-width:1800px;width:100%}
    <label class="check" for="marketwide5mRequireST" style="margin:0;white-space:nowrap"><input id="marketwide5mRequireST" type="checkbox"> Require 5m ST positive</label>
    <label class="check" for="marketwide5mRequire1hST" style="margin:0;white-space:nowrap"><input id="marketwide5mRequire1hST" type="checkbox"> Require 1h ST positive</label>
    <label class="check" for="marketwide5mRequire1hMACD" style="margin:0;white-space:nowrap"><input id="marketwide5mRequire1hMACD" type="checkbox"> Require 1h MACD histogram positive</label>
+   <label class="check" for="marketwide5mRequire15mST" style="margin:0;white-space:nowrap"><input id="marketwide5mRequire15mST" type="checkbox"> Require 15m ST positive</label>
+   <label class="check" for="marketwide5mRequire15mMACD" style="margin:0;white-space:nowrap"><input id="marketwide5mRequire15mMACD" type="checkbox"> Require 15m MACD histogram positive</label>
    <input id="marketwide5mMinRsi" type="number" min="0" max="100" step="1" value="60" style="width:62px">
    <label for="marketwide5mMinVolume" style="margin:0;white-space:nowrap">Min 24h volume (USDT)</label>
    <input id="marketwide5mMinVolume" type="number" min="0" step="100000" value="2000000" style="width:105px">
@@ -883,6 +885,19 @@ async function marketwide5mGet1hConfirmation(symbol,state){
  })().finally(()=>{state.htf1hPromise=null;});
  return state.htf1hPromise;
 }
+async function marketwide5mGet15mConfirmation(symbol,state){
+ const now=Date.now();
+ if(state.htf15mCache&&state.htf15mCache.expiresAt>now)return state.htf15mCache;
+ if(state.htf15mPromise)return state.htf15mPromise;
+ state.htf15mPromise=(async()=>{
+  const rows=await request("/fapi/v1/klines?symbol="+symbol+"&interval=15m&limit=99");
+  if(!Array.isArray(rows)||rows.length<35)throw new Error("Insufficient 15m candles");
+  const st=supertrendInfo(rows,10,3),m=macd(rows),hist=m&&m.hist;
+  const result={stPositive:!!(st&&st.trend===1),macdPositive:!!(hist&&Number.isFinite(hist[hist.length-1])&&hist[hist.length-1]>0),expiresAt:Date.now()+60000};
+  state.htf15mCache=result;return result;
+ })().finally(()=>{state.htf15mPromise=null;});
+ return state.htf15mPromise;
+}
 async function evaluateMarketwide5m(symbol,initial=false){
  const state=marketwide5mStates.get(symbol);if(!state||!Array.isArray(state.rows)||state.rows.length<35)return;
  const rows=state.rows,m=macd(rows),hist=m.hist,candleLimit=marketwide5mCandleLimit(),age=eventAge(hist,candleLimit,"bull"),rv=rsi(rows,14),pct=marketwide5mPct(rows),requireST=$("marketwide5mRequireST")?.checked===true,st5m=requireST?supertrendInfo(rows,10,3):null;
@@ -902,6 +917,20 @@ async function evaluateMarketwide5m(symbol,initial=false){
    }
   }catch(e){
    if(marketwide5mStates.get(symbol)!==state||state.htfEvalToken!==token)return;
+   const prior=marketwide5mSignals.get(symbol);if(prior){marketwide5mSignals.delete(symbol);renderMarketwide5m();}return;
+  }
+ }
+ const require15mST=$("marketwide5mRequire15mST")?.checked===true,require15mMACD=$("marketwide5mRequire15mMACD")?.checked===true;
+ if(require15mST||require15mMACD){
+  const token=(state.htf15mEvalToken||0)+1;state.htf15mEvalToken=token;
+  try{
+   const htf=await marketwide5mGet15mConfirmation(symbol,state);
+   if(marketwide5mStates.get(symbol)!==state||state.htf15mEvalToken!==token)return;
+   if((require15mST&&!htf.stPositive)||(require15mMACD&&!htf.macdPositive)){
+    const prior=marketwide5mSignals.get(symbol);if(prior){marketwide5mSignals.delete(symbol);renderMarketwide5m();}return;
+   }
+  }catch(e){
+   if(marketwide5mStates.get(symbol)!==state||state.htf15mEvalToken!==token)return;
    const prior=marketwide5mSignals.get(symbol);if(prior){marketwide5mSignals.delete(symbol);renderMarketwide5m();}return;
   }
  }
@@ -964,6 +993,7 @@ $("marketwide5mExpand").addEventListener("click",()=>{marketwide5mExpanded=!mark
 $("marketwide5mMinVolume").addEventListener("change",()=>{const value=marketwide5mMinVolume();$("marketwide5mMinVolume").value=String(value);startMarketwide5m(marketwide5mExchangeSymbols,marketwide5mTickerRows);});
 $("marketwide5mRequireST").addEventListener("change",()=>{for(const symbol of marketwide5mStates.keys())evaluateMarketwide5m(symbol,true);renderMarketwide5m();});
 ["marketwide5mRequire1hST","marketwide5mRequire1hMACD"].forEach(id=>$(id).addEventListener("change",()=>{for(const symbol of marketwide5mStates.keys())evaluateMarketwide5m(symbol,true);renderMarketwide5m();}));
+["marketwide5mRequire15mST","marketwide5mRequire15mMACD"].forEach(id=>$(id).addEventListener("change",()=>{for(const symbol of marketwide5mStates.keys())evaluateMarketwide5m(symbol,true);renderMarketwide5m();}));
 /* Move the existing minimum-volume control into one compact Volume tab without changing its ID or value. */
 const minVolControl=$("minVol"),pcMinVolControl=$("pcMinVol");if(minVolControl&&$("volumeControlsBody")){const label=minVolControl.parentElement.querySelector("label");if(label)label.textContent="Green Tracker — minimum 24h quote volume (USDT)";$("volumeControlsBody").appendChild(minVolControl.parentElement);}if(pcMinVolControl&&$("volumeControlsBody")){const label=pcMinVolControl.parentElement.querySelector("label");if(label)label.textContent="Price Change — minimum 24h quote volume (USDT)";$("volumeControlsBody").appendChild(pcMinVolControl.parentElement);}
 
