@@ -950,7 +950,7 @@ function startMarketwide5m(exchangeSymbols,tickerRows){
  const threshold=marketwide5mMinVolume();
  const quoteVolumeBySymbol=new Map(marketwide5mTickerRows.map(t=>[t.symbol,Number(t.quoteVolume)]));
  const symbols=marketwide5mExchangeSymbols.filter(x=>x&&x.status==="TRADING"&&quoteVolumeBySymbol.get(x.symbol)>=threshold).map(x=>x.symbol).filter(Boolean).sort(),key=symbols.join("|");
- if(!symbols.length||key===marketwide5mInventoryKey)return;
+ if(key===marketwide5mInventoryKey)return;
  marketwide5mInventoryKey=key;marketwide5mSymbols=symbols;marketwide5mSocketGeneration++;
  for(const socket of marketwide5mSockets){try{socket.close();}catch(e){}}marketwide5mSockets=[];
  for(const symbol of [...marketwide5mStates.keys()])if(!symbols.includes(symbol))marketwide5mStates.delete(symbol);for(const symbol of [...marketwide5mSeedFailures.keys()])if(!symbols.includes(symbol))marketwide5mSeedFailures.delete(symbol);
