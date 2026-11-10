@@ -172,7 +172,27 @@ main{max-width:1800px;width:100%}
 #volumeControlsTab summary{list-style:none}#volumeControlsTab summary::-webkit-details-marker{display:none}
 #volumeControlsTab summary:before{content:"＋ ";color:#70f0aa}#volumeControlsTab[open] summary:before{content:"－ "}
 #volumeControlsBody>div{min-width:190px}
-#marketwide5mPanel{box-sizing:border-box;min-width:0;width:50%!important;max-width:640px;margin-left:0!important;margin-right:auto!important;padding:7px!important}#marketwide5mPanel .statusline{flex-wrap:wrap;gap:5px}#marketwide5mPanel .statusline>div:first-child{min-width:0;flex:1 1 100%}#marketwide5mPanel .statusline>div:first-child>b{font-size:12px}#marketwide5mPanel .statusline>div:first-child .small{font-size:9px;line-height:1.2}#marketwide5mPanel .statusline>.row{width:100%;display:flex;flex-wrap:wrap;gap:4px!important;align-items:center}#marketwide5mPanel .statusline>.row label{font-size:9px}#marketwide5mPanel .statusline>.row input{max-width:100%;font-size:10px}#marketwide5mPanel .statusline>.row button{font-size:10px;padding:4px 6px}#marketwide5mPanel #marketwide5mRows{min-width:0}#marketwide5mPanel #marketwide5mRows>div{min-width:0;font-size:10px!important;padding:2px 3px!important;gap:2px!important}#marketwide5mPanel>div:nth-of-type(2){font-size:9px!important;gap:2px!important;padding:0 2px!important}#marketwide5mPanel #marketwide5mExpand{font-size:10px;padding:4px 7px}#marketwide5mPanel #marketwide5mStatus{font-size:9px}#marketwide5mPanel .row{flex-wrap:wrap}
+/* Market-wide alert readability restoration: retain the panel as a full-width section and restore legible tablet typography. UI-only. */
+#marketwide5mPanel{box-sizing:border-box;min-width:0;width:100%!important;max-width:none!important;margin:8px 0 12px!important;padding:15px!important}
+#marketwide5mPanel .statusline{align-items:center;gap:10px}
+#marketwide5mPanel .statusline>div:first-child{min-width:240px;flex:1 1 280px}
+#marketwide5mPanel .statusline>div:first-child>b{font-size:14px!important}
+#marketwide5mPanel .statusline>div:first-child .small{font-size:12px!important;line-height:1.4}
+#marketwide5mPanel .statusline>.row{width:auto;display:flex;flex:1 1 100%;flex-wrap:wrap;gap:8px!important;align-items:center}
+#marketwide5mPanel .statusline>.row label{font-size:12px!important}
+#marketwide5mPanel .statusline>.row input{font-size:13px!important}
+#marketwide5mPanel .statusline>.row button{font-size:12px!important;padding:7px 10px!important}
+#marketwide5mPanel>div:nth-of-type(2){font-size:12px!important;gap:8px!important;padding:0 6px!important}
+#marketwide5mPanel #marketwide5mRows>div{min-width:0;font-size:13px!important;padding:6px 8px!important;gap:8px!important}
+#marketwide5mPanel #marketwide5mExpand{font-size:12px!important;padding:7px 11px!important}
+#marketwide5mPanel #marketwide5mStatus{font-size:12px!important}
+#marketwide5mPanel .row{flex-wrap:wrap}
+@media(max-width:760px){
+ #marketwide5mPanel{padding:12px!important}
+ #marketwide5mPanel .statusline>.row{width:100%}
+ #marketwide5mPanel>div:nth-of-type(2){font-size:11px!important}
+ #marketwide5mPanel #marketwide5mRows>div{font-size:12px!important}
+}
 
 
 </style></head><body><main>
