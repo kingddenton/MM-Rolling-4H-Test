@@ -292,6 +292,8 @@ main{max-width:1800px;width:100%}
 (function(){
 "use strict";
 const $=id=>document.getElementById(id), TFS=["1m","3m","5m","15m"];
+// Register the independent 3m tab before the longer scanner initialization runs.
+document.addEventListener("click",e=>{const button=e.target.closest("#macd3mNav");if(button){e.preventDefault();pcTab("macd3m");}});
 const hosts=["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com"];
 
 let hostIndex=0,lastRequest=0,activeRequests=0,pendingRequests=[],requestPumpTimer=null,timer=null,busy=false,countdownTimer=null,nextAt=0,autoActive=false,exchangeInfoCache=null,exchangeInfoAt=0,exchangeInfoPromise=null;
@@ -1115,7 +1117,7 @@ async function macd3mRun(){if(macd3mBusy)return;macd3mBusy=true;$("macd3mScan").
 function macd3mAutoToggle(){if(macd3mAutoOn){macd3mAutoOn=false;if(macd3mTimer)clearTimeout(macd3mTimer);$("macd3mAuto").textContent="Start auto-scan";return;}const sec=Number($("macd3mRefresh").value);if(!sec){$("macd3mStatus").textContent="Choose a refresh interval first.";return;}macd3mAutoOn=true;$("macd3mAuto").textContent="Stop auto-scan";const cycle=async()=>{if(!macd3mAutoOn)return;await macd3mRun();if(macd3mAutoOn)macd3mTimer=setTimeout(cycle,sec*1000);};cycle();}
 $("macd3mScan").addEventListener("click",macd3mRun);$("macd3mAuto").addEventListener("click",macd3mAutoToggle);
 function pcTab(name){const g=name==="green",p=name==="price",m=name==="macd3m";for(const [id,show] of [["greenTrackerView",g],["priceTracker",p],["macd3mView",m]]){const el=$(id);el.hidden=!show;el.style.display=show?"":"none";el.setAttribute("aria-hidden",show?"false":"true");}for(const [id,on] of [["greenTabBtn",g],["priceTabBtn",p],["macd3mNav",m]]){$(id).classList.toggle("active",on);$(id).classList.toggle("secondary",!on);}}
-$("greenTabBtn").addEventListener("click",()=>pcTab("green"));$("priceTabBtn").addEventListener("click",()=>pcTab("price"));$("macd3mNav").addEventListener("click",()=>pcTab("macd3m"));$("pcScan").addEventListener("click",pcRun);$("pcAuto").addEventListener("click",pcAutoToggle);pcInit();restoreLastSettings();$("run15mCoverageDiagnostic").addEventListener("click",render15mCoverageDiagnostic);
+$("greenTabBtn").addEventListener("click",()=>pcTab("green"));$("priceTabBtn").addEventListener("click",()=>pcTab("price"));$("pcScan").addEventListener("click",pcRun);$("pcAuto").addEventListener("click",pcAutoToggle);pcInit();restoreLastSettings();$("run15mCoverageDiagnostic").addEventListener("click",render15mCoverageDiagnostic);
 
 specialFallbackTimer=setInterval(specialCandidateRestFallback,60000);setInterval(()=>{const now=Date.now();if(twentyPctWatchSymbols.size&&twentyPctLastMessageAt&&now-twentyPctLastMessageAt>30000){const status=$("twentyPctStatus");if(status)status.textContent="LIVE STREAM STALE — no candle updates for "+Math.round((now-twentyPctLastMessageAt)/1000)+"s; reconnecting if the socket closes.";}},15000);
 function installVolumeFilterAudit(){
