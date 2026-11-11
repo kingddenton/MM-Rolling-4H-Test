@@ -28,23 +28,23 @@ input,select,button{width:100%;min-height:42px;border:1px solid var(--line);bord
 <header><div><h1>MM Binance · 3M MACD ≤ 0</h1><p>USDⓈ-M · USDT perpetuals · Live forming candle included</p></div></header>
 <section class="panel">
  <div class="controls">
-  <div><label for="bars">Consecutive 3-minute candles with histogram ≤ 0</label><input id="bars" type="number" min="1" max="100" step="1" value="1"></div>
+  <div><label for="bars">Candle progress target</label><input id="bars" type="number" value="5" disabled><div class="note">Coins appear from 1/5 and progress as consecutive candles qualify.</div></div>
   <div><label for="minVol">Minimum 24h quote volume (USDT)</label><input id="minVol" type="number" min="0" step="100000" value="0"></div>
-  <div><label for="refresh">Automatic refresh</label><select id="refresh"><option value="0">Off</option><option value="60">Every 60 seconds</option><option value="120">Every 120 seconds</option><option value="300">Every 5 minutes</option></select></div>
+  <div><label for="refresh">Automatic refresh</label><select id="refresh"><option value="0">Off</option><option value="60" selected>Every 60 seconds</option><option value="120">Every 120 seconds</option><option value="300">Every 5 minutes</option></select></div>
  </div>
  <div class="checks">
   <label><input id="dif" type="checkbox"> DIF below 0</label>
   <label><input id="dea" type="checkbox"> DEA below 0</label>
   <label><input id="st" type="checkbox"> Bearish Supertrend (3m)</label>
  </div>
- <div class="actions"><button id="scan">Scan once</button><button id="auto" class="secondary">Start auto-scan</button><button id="clear" class="secondary">Clear results</button></div>
- <div id="status" role="status">Ready. Press Scan once to scan all eligible USDT perpetual contracts.</div>
+ <div class="actions"><button id="scan">Scan now</button><button id="auto" class="secondary">Start auto-scan</button><button id="clear" class="secondary">Clear results</button></div>
+ <div id="status" role="status">Starting continuous scan…</div>
  <div class="note">MACD uses standard 12/26/9 settings. Supertrend uses ATR(10), multiplier 3. Optional confirmations use the same 3-minute candles. The current forming candle is included, so values can change before candle close.</div>
 </section>
 <section class="panel">
  <div class="summary"><span>Matches: <strong id="matches">0</strong></span><span>Eligible contracts: <strong id="eligible">—</strong></span><span>Data errors: <strong id="errors">0</strong></span><span>Last scan: <strong id="lastScan">—</strong></span></div>
  <div class="tablewrap" style="margin-top:12px">
-  <table><thead><tr><th>Symbol</th><th>3m Histogram</th><th>DIF</th><th>DEA</th><th>Supertrend</th><th>Consecutive candles</th><th>24h Volume (USDT)</th><th>24h Change</th></tr></thead>
+  <table><thead><tr><th>Symbol</th><th>3m Histogram</th><th>DIF</th><th>DEA</th><th>Supertrend</th><th>3m Candle Progress</th><th>24h Volume (USDT)</th><th>24h Change</th></tr></thead>
   <tbody id="rows"><tr><td colspan="8" class="empty">No scan results yet.</td></tr></tbody></table>
  </div>
 </section>
@@ -81,12 +81,12 @@ function supertrend(rows,period=10,multiplier=3){
  return{trend:directions[directions.length-1]};
 }
 function fmt(value,digits=6){return Number.isFinite(value)?value.toLocaleString(undefined,{maximumFractionDigits:digits}):"—";}
-function render(results){$("matches").textContent=results.length;$("rows").innerHTML=results.map(x=>'<tr><td>'+x.symbol+'</td><td class="negative">'+fmt(x.hist,8)+'</td><td>'+fmt(x.dif,8)+'</td><td>'+fmt(x.dea,8)+'</td><td>'+(x.st===-1?'<span class="negative">BEARISH</span>':"—")+'</td><td>'+x.count+'</td><td>'+fmt(x.volume,0)+'</td><td class="'+(x.change>=0?"positive":"negative")+'">'+fmt(x.change,2)+'%</td></tr>').join("")||'<tr><td colspan="8" class="empty">No contracts currently meet the selected conditions.</td></tr>';}
+function render(results){$("matches").textContent=results.length;$("rows").innerHTML=results.map(x=>'<tr><td>'+x.symbol+'</td><td class="negative">'+fmt(x.hist,8)+'</td><td>'+fmt(x.dif,8)+'</td><td>'+fmt(x.dea,8)+'</td><td>'+(x.st===-1?'<span class="negative">BEARISH</span>':"—")+'</td><td>'+Math.min(x.count,5)+'/5</td><td>'+fmt(x.volume,0)+'</td><td class="'+(x.change>=0?"positive":"negative")+'">'+fmt(x.change,2)+'%</td></tr>').join("")||'<tr><td colspan="8" class="empty">No contracts currently meet the selected conditions.</td></tr>';}
 async function scan(){
  if(busy)return;busy=true;$("scan").disabled=true;$("status").textContent="Loading exchange universe and 24-hour ticker data…";const started=Date.now();let errorCount=0;
  try{
   const [tickers,exchange]=await Promise.all([api("/fapi/v1/ticker/24hr"),api("/fapi/v1/exchangeInfo")]);
-  const minVolume=Math.max(0,Number($("minVol").value)||0),required=Math.max(1,Math.min(100,Math.floor(Number($("bars").value)||1)));
+  const minVolume=Math.max(0,Number($("minVol").value)||0);
   const tickerBySymbol=new Map(tickers.map(ticker=>[ticker.symbol,ticker]));
   const symbols=exchange.symbols.filter(item=>item.status==="TRADING"&&item.contractType==="PERPETUAL"&&item.quoteAsset==="USDT").map(item=>tickerBySymbol.get(item.symbol)).filter(ticker=>ticker&&Number(ticker.quoteVolume)>=minVolume);
   $("eligible").textContent=symbols.length;
@@ -98,8 +98,8 @@ async function scan(){
      const candles=await api("/fapi/v1/klines?symbol="+ticker.symbol+"&interval=3m&limit=100");
      if(!Array.isArray(candles)||candles.length<35)throw new Error("Insufficient 3m candle history");
      const indicators=macd(candles),last=indicators.hist.length-1;let count=0;
-     for(let j=last;j>=0&&count<required;j--){if(indicators.hist[j]<=0)count++;else break;}
-     if(count<required)return null;
+     for(let j=last;j>=0;j--){if(indicators.hist[j]<=0)count++;else break;}
+     if(count<1)return null;
      const difValue=indicators.dif[last],deaValue=indicators.dea[last];
      if($("dif").checked&&!(difValue<0))return null;
      if($("dea").checked&&!(deaValue<0))return null;
@@ -121,6 +121,8 @@ $("scan").addEventListener("click",scan);
 $("auto").addEventListener("click",()=>autoOn?stopAuto():startAuto());
 $("clear").addEventListener("click",()=>{render([]);$("eligible").textContent="—";$("errors").textContent="0";$("lastScan").textContent="—";$("status").textContent="Results cleared. Ready for a new scan.";});
 $("refresh").addEventListener("change",()=>{if(autoOn){stopAuto();startAuto();}});
+// Begin continuous scanning automatically when the page opens.
+startAuto();
 </script>
 </body>
 </html>
