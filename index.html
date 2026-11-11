@@ -111,7 +111,7 @@ async function scan(){
    for(const item of scanned)if(item)results.push(item);
    $("status").textContent="Scanning "+Math.min(i+batch.length,symbols.length)+" / "+symbols.length+" contracts · "+results.length+" matches so far…";
   }
-  results.sort((a,b)=>a.hist-b.hist);render(results);$("errors").textContent=errorCount;$("lastScan").textContent=new Date().toLocaleTimeString();$("status").textContent="Complete: "+results.length+" matches from "+symbols.length+" eligible USDT perpetuals in "+((Date.now()-started)/1000).toFixed(1)+" seconds."+(errorCount?" "+errorCount+" symbols had data errors.":"");
+  results.sort((a,b)=>Math.min(a.count,5)-Math.min(b.count,5)||a.hist-b.hist);render(results);$("errors").textContent=errorCount;$("lastScan").textContent=new Date().toLocaleTimeString();$("status").textContent="Complete: "+results.length+" matches from "+symbols.length+" eligible USDT perpetuals in "+((Date.now()-started)/1000).toFixed(1)+" seconds."+(errorCount?" "+errorCount+" symbols had data errors.":"");
  }catch(error){$("status").textContent="Scan failed: "+String(error.message||error);$("errors").textContent=errorCount;}
  finally{$("scan").disabled=false;busy=false;}
 }
