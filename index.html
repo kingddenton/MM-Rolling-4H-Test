@@ -1352,4 +1352,29 @@ $("universeSearch").addEventListener("input",renderUniverse);buildPanels();if(!$
 .panel-collapsed{padding-bottom:7px!important}
 </style>
 
+<script>
+/* Standalone tab switch: independent of the main scanner initialization. */
+(function(){
+ document.addEventListener("click",function(event){
+  const button=event.target.closest("#macd3mNav");
+  if(!button)return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const views=[["greenTrackerView",false],["priceTracker",false],["macd3mView",true]];
+  for(const [id,show] of views){
+   const el=document.getElementById(id);
+   if(!el)continue;
+   el.hidden=!show;
+   el.style.setProperty("display",show?"block":"none","important");
+   el.setAttribute("aria-hidden",show?"false":"true");
+  }
+  for(const [id,active] of [["greenTabBtn",false],["priceTabBtn",false],["macd3mNav",true]]){
+   const tab=document.getElementById(id);
+   if(!tab)continue;
+   tab.classList.toggle("active",active);
+   tab.classList.toggle("secondary",!active);
+  }
+ },true);
+})();
+</script>
 </body></html>
