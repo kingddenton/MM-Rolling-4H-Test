@@ -1353,28 +1353,25 @@ $("universeSearch").addEventListener("input",renderUniverse);buildPanels();if(!$
 </style>
 
 <script>
-/* Standalone tab switch: independent of the main scanner initialization. */
+/* Direct button handler for the independent 3m scanner view. */
 (function(){
- document.addEventListener("click",function(event){
-  const button=event.target.closest("#macd3mNav");
-  if(!button)return;
+ const button=document.getElementById("macd3mNav");
+ if(!button)return;
+ button.onclick=function(event){
   event.preventDefault();
-  event.stopImmediatePropagation();
   const views=[["greenTrackerView",false],["priceTracker",false],["macd3mView",true]];
-  for(const [id,show] of views){
+  views.forEach(([id,show])=>{
    const el=document.getElementById(id);
-   if(!el)continue;
+   if(!el)return;
    el.hidden=!show;
    el.style.setProperty("display",show?"block":"none","important");
    el.setAttribute("aria-hidden",show?"false":"true");
-  }
-  for(const [id,active] of [["greenTabBtn",false],["priceTabBtn",false],["macd3mNav",true]]){
+  });
+  [["greenTabBtn",false],["priceTabBtn",false],["macd3mNav",true]].forEach(([id,active])=>{
    const tab=document.getElementById(id);
-   if(!tab)continue;
-   tab.classList.toggle("active",active);
-   tab.classList.toggle("secondary",!active);
-  }
- },true);
+   if(tab){tab.classList.toggle("active",active);tab.classList.toggle("secondary",!active);}
+  });
+ };
 })();
 </script>
 </body></html>
