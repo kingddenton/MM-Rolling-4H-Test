@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07111f">
+<title>MM Binance — 3M MACD ≤ 0 Scanner</title>
+<style>
+:root{color-scheme:dark;--bg:#07111f;--panel:#0d1b2b;--panel2:#102338;--line:#243b52;--text:#e7eef7;--muted:#9eb0c4;--green:#19c37d;--red:#ff647c;--blue:#65b8ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:1200px;margin:0 auto;padding:18px}
+header{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+h1{font-size:22px;margin:0;color:#ffd34e}header p{margin:3px 0 0;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px;margin-bottom:14px}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end}
+label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}
+input,select,button{width:100%;min-height:42px;border:1px solid var(--line);border-radius:9px;background:#081523;color:var(--text);padding:9px 11px;font:inherit}
+.checks{display:flex;flex-wrap:wrap;gap:18px;margin-top:14px}.checks label{display:flex;align-items:center;gap:8px;margin:0;color:var(--text);font-size:13px}.checks input{width:18px;min-height:18px;accent-color:var(--green)}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.actions button{width:auto;min-width:130px;background:var(--green);border:0;color:#04140d;font-weight:800}.actions button.secondary{background:var(--panel2);border:1px solid var(--line);color:var(--text)}button:disabled{opacity:.55}
+#status{margin-top:12px;color:var(--muted);min-height:22px}.summary{display:flex;gap:20px;flex-wrap:wrap;color:var(--muted);font-size:13px}.summary strong{color:var(--text);font-variant-numeric:tabular-nums}
+.tablewrap{overflow:auto;max-height:65vh}table{width:100%;border-collapse:collapse;min-width:780px}th,td{padding:10px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}th{position:sticky;top:0;background:#102338;color:#b9cadd;font-size:12px}th:first-child,td:first-child{text-align:left}td:first-child{font-weight:800;color:#fff}.negative{color:var(--red)}.positive{color:var(--green)}.empty{text-align:center!important;color:var(--muted);padding:24px}
+.note{color:var(--muted);font-size:12px;margin-top:10px}
+@media(max-width:600px){main{padding:11px}h1{font-size:19px}.panel{padding:12px}.controls{grid-template-columns:1fr 1fr}.actions button{flex:1}}
+</style>
+</head>
+<body>
+<main>
+<header><div><h1>MM Binance · 3M MACD ≤ 0</h1><p>USDⓈ-M · USDT perpetuals · Live forming candle included</p></div></header>
+<section class="panel">
+ <div class="controls">
+  <div><label for="bars">Candle progress target</label><input id="bars" type="number" value="5" disabled><div class="note">Coins appear from 1/5 and progress as consecutive candles qualify.</div></div>
+  <div><label for="minVol">Minimum 24h quote volume (USDT)</label><input id="minVol" type="number" min="0" step="100000" value="0"></div>
+  <div><label for="refresh">Automatic refresh</label><select id="refresh"><option value="0">Off</option><option value="60" selected>Every 60 seconds</option><option value="120">Every 120 seconds</option><option value="300">Every 5 minutes</option></select></div>
+ </div>
+ <div class="checks">
+  <label><input id="dif" type="checkbox"> DIF below 0</label>
+  <label><input id="dea" type="checkbox"> DEA below 0</label>
+  <label><input id="st" type="checkbox"> Bearish Supertrend (3m)</label>
+ </div>
+ <div class="actions"><button id="scan">Scan now</button><button id="auto" class="secondary">Start auto-scan</button><button id="clear" class="secondary">Clear results</button></div>
+ <div id="status" role="status">Starting continuous scan…</div>
+ <div class="note">MACD uses standard 12/26/9 settings. Supertrend uses ATR(10), multiplier 3. Optional confirmations use the same 3-minute candles. The current forming candle is included, so values can change before candle close.</div>
+</section>
+<section class="panel">
+ <div class="summary"><span>Matches: <strong id="matches">0</strong></span><span>Eligible contracts: <strong id="eligible">—</strong></span><span>Data errors: <strong id="errors">0</strong></span><span>Last scan: <strong id="lastScan">—</strong></span></div>
+ <div class="tablewrap" style="margin-top:12px">
+  <table><thead><tr><th>Symbol</th><th>3m Histogram</th><th>DIF</th><th>DEA</th><th>Supertrend</th><th>3m Candle Progress</th><th>24h Volume (USDT)</th><th>24h Change</th></tr></thead>
+  <tbody id="rows"><tr><td colspan="8" class="empty">No scan results yet.</td></tr></tbody></table>
+ </div>
+</section>
+</main>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const HOSTS=["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com"];
+let hostIndex=0,busy=false,autoOn=false,autoTimer=null,lastRequestAt=0;
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function api(path){
+ let lastError;
+ for(let n=0;n<HOSTS.length;n++){
+  const host=HOSTS[(hostIndex+n)%HOSTS.length];
+  try{
+   const wait=Math.max(0,180-(Date.now()-lastRequestAt));if(wait)await sleep(wait);
+   lastRequestAt=Date.now();
+   const response=await fetch(host+path,{cache:"no-store"});
+   if(response.status===418||response.status===429){const retry=Number(response.headers.get("Retry-After"));await sleep(Number.isFinite(retry)&&retry>0?retry*1000:60000);throw new Error("Binance rate limit HTTP "+response.status);}
+   if(!response.ok)throw new Error("HTTP "+response.status);
+   hostIndex=(hostIndex+n)%HOSTS.length;
+   return await response.json();
+  }catch(error){lastError=error;if(String(error.message).includes("rate limit"))break;}
+ }
+ throw lastError||new Error("Binance request failed");
+}
+function ema(values,period){const k=2/(period+1),out=[];let value=values[0];out.push(value);for(let i=1;i<values.length;i++){value=values[i]*k+value*(1-k);out.push(value);}return out;}
+function macd(rows){const close=rows.map(row=>Number(row[4])),e12=ema(close,12),e26=ema(close,26),dif=close.map((_,i)=>e12[i]-e26[i]),dea=ema(dif,9);return{dif,dea,hist:dif.map((value,i)=>value-dea[i])};}
+function atr(rows,period=10){const tr=[];for(let i=1;i<rows.length;i++){const high=Number(rows[i][2]),low=Number(rows[i][3]),previous=Number(rows[i-1][4]);tr.push(Math.max(high-low,Math.abs(high-previous),Math.abs(low-previous)));}return ema(tr,period);}
+function supertrend(rows,period=10,multiplier=3){
+ if(rows.length<period+2)return null;
+ const values=atr(rows,period),directions=Array(rows.length).fill(1);let upper=0,lower=0,trend=1;
+ for(let i=0;i<values.length;i++){const row=rows[i+1],mid=(Number(row[2])+Number(row[3]))/2,basicUpper=mid+multiplier*values[i],basicLower=mid-multiplier*values[i];if(i===0){upper=basicUpper;lower=basicLower;directions[i+1]=trend;continue;}const previousClose=Number(rows[i][4]);upper=basicUpper<upper||previousClose>upper?basicUpper:upper;lower=basicLower>lower||previousClose<lower?basicLower:lower;const close=Number(row[4]);if(trend===1&&close<lower)trend=-1;else if(trend===-1&&close>upper)trend=1;directions[i+1]=trend;}
+ return{trend:directions[directions.length-1]};
+}
+function fmt(value,digits=6){return Number.isFinite(value)?value.toLocaleString(undefined,{maximumFractionDigits:digits}):"—";}
+function render(results){$("matches").textContent=results.length;$("rows").innerHTML=results.map(x=>'<tr><td>'+x.symbol+'</td><td class="negative">'+fmt(x.hist,8)+'</td><td>'+fmt(x.dif,8)+'</td><td>'+fmt(x.dea,8)+'</td><td>'+(x.st===-1?'<span class="negative">BEARISH</span>':"—")+'</td><td>'+Math.min(x.count,5)+'/5</td><td>'+fmt(x.volume,0)+'</td><td class="'+(x.change>=0?"positive":"negative")+'">'+fmt(x.change,2)+'%</td></tr>').join("")||'<tr><td colspan="8" class="empty">No contracts currently meet the selected conditions.</td></tr>';}
+async function scan(){
+ if(busy)return;busy=true;$("scan").disabled=true;$("status").textContent="Loading exchange universe and 24-hour ticker data…";const started=Date.now();let errorCount=0;
+ try{
+  const [tickers,exchange]=await Promise.all([api("/fapi/v1/ticker/24hr"),api("/fapi/v1/exchangeInfo")]);
+  const minVolume=Math.max(0,Number($("minVol").value)||0);
+  const tickerBySymbol=new Map(tickers.map(ticker=>[ticker.symbol,ticker]));
+  const symbols=exchange.symbols.filter(item=>item.status==="TRADING"&&item.contractType==="PERPETUAL"&&item.quoteAsset==="USDT").map(item=>tickerBySymbol.get(item.symbol)).filter(ticker=>ticker&&Number(ticker.quoteVolume)>=minVolume);
+  $("eligible").textContent=symbols.length;
+  const results=[];
+  for(let i=0;i<symbols.length;i+=4){
+   const batch=symbols.slice(i,i+4);
+   const scanned=await Promise.all(batch.map(async ticker=>{
+    try{
+     const candles=await api("/fapi/v1/klines?symbol="+ticker.symbol+"&interval=3m&limit=100");
+     if(!Array.isArray(candles)||candles.length<35)throw new Error("Insufficient 3m candle history");
+     const indicators=macd(candles),last=indicators.hist.length-1;let count=0;
+     for(let j=last;j>=0;j--){if(indicators.hist[j]<=0)count++;else break;}
+     if(count<1||count>=5)return null;
+     const difValue=indicators.dif[last],deaValue=indicators.dea[last];
+     if($("dif").checked&&!(difValue<0))return null;
+     if($("dea").checked&&!(deaValue<0))return null;
+     const st=$("st").checked?supertrend(candles):null;
+     if($("st").checked&&(!st||st.trend!==-1))return null;
+     return{symbol:ticker.symbol,hist:indicators.hist[last],dif:difValue,dea:deaValue,st:st?st.trend:0,count,volume:Number(ticker.quoteVolume),change:Number(ticker.priceChangePercent)};
+    }catch(error){errorCount++;return null;}
+   }));
+   for(const item of scanned)if(item)results.push(item);
+   $("status").textContent="Scanning "+Math.min(i+batch.length,symbols.length)+" / "+symbols.length+" contracts · "+results.length+" matches so far…";
+  }
+  results.sort((a,b)=>Math.min(a.count,5)-Math.min(b.count,5)||a.hist-b.hist);render(results);$("errors").textContent=errorCount;$("lastScan").textContent=new Date().toLocaleTimeString();$("status").textContent="Complete: "+results.length+" matches from "+symbols.length+" eligible USDT perpetuals in "+((Date.now()-started)/1000).toFixed(1)+" seconds."+(errorCount?" "+errorCount+" symbols had data errors.":"");
+ }catch(error){$("status").textContent="Scan failed: "+String(error.message||error);$("errors").textContent=errorCount;}
+ finally{$("scan").disabled=false;busy=false;}
+}
+function stopAuto(){autoOn=false;if(autoTimer)clearTimeout(autoTimer);autoTimer=null;$("auto").textContent="Start auto-scan";}
+function startAuto(){const seconds=Number($("refresh").value);if(!seconds){$("status").textContent="Choose a refresh interval first.";return;}autoOn=true;$("auto").textContent="Stop auto-scan";const cycle=async()=>{if(!autoOn)return;await scan();if(autoOn)autoTimer=setTimeout(cycle,seconds*1000);};cycle();}
+$("scan").addEventListener("click",scan);
+$("auto").addEventListener("click",()=>autoOn?stopAuto():startAuto());
+$("clear").addEventListener("click",()=>{render([]);$("eligible").textContent="—";$("errors").textContent="0";$("lastScan").textContent="—";$("status").textContent="Results cleared. Ready for a new scan.";});
+$("refresh").addEventListener("change",()=>{if(autoOn){stopAuto();startAuto();}});
+// Begin continuous scanning automatically when the page opens.
+startAuto();
+</script>
+</body>
+</html>
