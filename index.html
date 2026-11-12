@@ -1471,6 +1471,14 @@ syncSpecialMacdUniverseControls();["specialMacdUniverseMode","specialMacdMinGain
  }
  // Move the existing editable candle-count control into this tab, directly below the scan buttons.
  if(candleCountRow && actionRow)actionRow.insertAdjacentElement("afterend",candleCountRow);
+ // Bring the existing market-universe and minimum-24h-volume controls alongside Candle count.
+ // Move the original elements so their IDs, values, listeners, and scanner behavior are preserved.
+ const universeControl=$("universe")?.closest("div");
+ const minVolumeControl=$("minVol")?.closest("div");
+ if(candleCountRow){
+   if(universeControl)candleCountRow.appendChild(universeControl);
+   if(minVolumeControl)candleCountRow.appendChild(minVolumeControl);
+ }
  // Keep the top gainers/losers diagnostic immediately below the scan controls and candle count.
  if(qualifiedCoins){
    const controlsAnchor=candleCountRow||actionRow;
