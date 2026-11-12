@@ -603,6 +603,7 @@ function renderEarlyMomentumHistory(){const feed=$("earlyMomentumFeed");if(!feed
 function addEarlyMomentumAlert(symbol,details,candleTime){const key=symbol+"|"+candleTime;if(alertedEarlyMomentum.has(key))return;alertedEarlyMomentum.add(key);earlyMomentumHistory.unshift({text:symbol+" · "+new Date(candleTime).toLocaleTimeString()+" · OI +"+details.oiPct.toFixed(2)+"% · CVD +"+details.cvdPct.toFixed(2)+"% · RSI "+details.rsi.toFixed(1)});if(earlyMomentumHistory.length>10)earlyMomentumHistory.pop();renderEarlyMomentumHistory();if(earlyMomentumSound){try{const Ctx=window.AudioContext||window.webkitAudioContext;if(!alertAudioContext)alertAudioContext=new Ctx();if(alertAudioContext.state==="suspended")alertAudioContext.resume();const now=alertAudioContext.currentTime,osc=alertAudioContext.createOscillator(),gain=alertAudioContext.createGain();osc.type="sine";osc.frequency.setValueAtTime(1046,now);gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.18,now+.02);gain.gain.exponentialRampToValueAtTime(.0001,now+.35);osc.connect(gain);gain.connect(alertAudioContext.destination);osc.start(now);osc.stop(now+.36);}catch(e){}}}
 const HISTOGRAM_MONITOR_TFS=["1m","3m","5m"];
 const histogramMonitorLastCandle=new Map();
+const histogramMomentumStreaks=new Map();
 const histogramMomentumHistory=Object.fromEntries(HISTOGRAM_MONITOR_TFS.map(tf=>[tf,{bull:[],bear:[]}]));
 const histogramDivergenceHistory=Object.fromEntries(HISTOGRAM_MONITOR_TFS.map(tf=>[tf,{bull:[],bear:[]}]));
 function histogramMonitorPush(history,tf,side,item){const list=history[tf][side];list.unshift(item);if(list.length>5)list.length=5;}
@@ -625,14 +626,18 @@ function updateHistogramMonitor(symbol,tf,analysis){
  if(!Number.isFinite(candleTime)||histogramMonitorLastCandle.get(key)===candleTime)return;
  histogramMonitorLastCandle.set(key,candleTime);
  const h=Number(hist[i]),prev=Number(hist[i-1]),open=Number(rows[i][1]),close=Number(rows[i][4]);
- if(![h,prev,open,close].every(Number.isFinite)||h===prev)return;
+ if(![h,prev,open,close].every(Number.isFinite))return;
  const priceChange=open?((close-open)/open)*100:0;
  let momentumLabel="",momentumSide="";
- if(h>0&&h>prev){momentumLabel="BULL · RISING";momentumSide="bull";}
- else if(h>0&&h<prev){momentumLabel="BULL · FALLING";momentumSide="bull";}
- else if(h<0&&h<prev){momentumLabel="BEAR · FALLING";momentumSide="bear";}
- else if(h<0&&h>prev){momentumLabel="BEAR · RISING";momentumSide="bear";}
- if(momentumLabel){
+ const movement=h>prev?"rising":h<prev?"falling":"";
+ let streak=histogramMomentumStreaks.get(key)||{direction:"",count:0};
+ if(!movement){streak={direction:"",count:0};}
+ else if(streak.direction===movement){streak={direction:movement,count:streak.count+1};}
+ else{streak={direction:movement,count:1};}
+ histogramMomentumStreaks.set(key,streak);
+ if(movement&&streak.count===3){
+  momentumSide=h>=0?"bull":"bear";
+  momentumLabel=(momentumSide==="bull"?"BULL":"BEAR")+" · "+movement.toUpperCase();
   histogramMonitorPush(histogramMomentumHistory,tf,momentumSide,{symbol,label:momentumLabel,candleTime,priceChange,histogram:h,className:momentumSide==="bull"?"live-candle-green":"live-candle-red"});
   renderHistogramMonitorRow(tf,histogramMomentumHistory,"histMomentum",momentumSide);flashHistogramHeading("histMomentum",tf,momentumSide);
  }
