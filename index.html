@@ -27,8 +27,9 @@ input,select,button{width:100%;min-height:42px;border:1px solid var(--line);bord
 <main>
 <header><div><h1>MM Binance · 3M MACD ≤ 0</h1><p>USDⓈ-M · USDT perpetuals · Live forming candle included</p></div></header>
 <section class="panel">
- <div class="controls">
-  <div><label for="bars">Candle progress target</label><input id="bars" type="number" value="5" disabled><div class="note">Coins appear from 1/5 and progress as consecutive candles qualify.</div></div>
+ <div class="actions"><button id="scan">Scan now</button><button id="auto" class="secondary">Start auto-scan</button><button id="clear" class="secondary">Clear results</button></div>
+ <div class="controls" style="margin-top:14px">
+  <div><label for="bars">Candle progress target</label><input id="bars" type="number" min="2" max="100" step="1" value="5"><div class="note">Editable limit: show qualifying coins from 1 candle up to the candle before this target.</div></div>
   <div><label for="minVol">Minimum 24h quote volume (USDT)</label><input id="minVol" type="number" min="0" step="100000" value="0"></div>
   <div><label for="refresh">Automatic refresh</label><select id="refresh"><option value="0">Off</option><option value="60" selected>Every 60 seconds</option><option value="120">Every 120 seconds</option><option value="300">Every 5 minutes</option></select></div>
  </div>
@@ -37,7 +38,6 @@ input,select,button{width:100%;min-height:42px;border:1px solid var(--line);bord
   <label><input id="dea" type="checkbox"> DEA below 0</label>
   <label><input id="st" type="checkbox"> Bearish Supertrend (3m)</label>
  </div>
- <div class="actions"><button id="scan">Scan now</button><button id="auto" class="secondary">Start auto-scan</button><button id="clear" class="secondary">Clear results</button></div>
  <div id="status" role="status">Starting continuous scan…</div>
  <div class="note">MACD uses standard 12/26/9 settings. Supertrend uses ATR(10), multiplier 3. Optional confirmations use the same 3-minute candles. The current forming candle is included, so values can change before candle close.</div>
 </section>
@@ -81,12 +81,13 @@ function supertrend(rows,period=10,multiplier=3){
  return{trend:directions[directions.length-1]};
 }
 function fmt(value,digits=6){return Number.isFinite(value)?value.toLocaleString(undefined,{maximumFractionDigits:digits}):"—";}
-function render(results){$("matches").textContent=results.length;$("rows").innerHTML=results.map(x=>'<tr><td>'+x.symbol+'</td><td class="negative">'+fmt(x.hist,8)+'</td><td>'+fmt(x.dif,8)+'</td><td>'+fmt(x.dea,8)+'</td><td>'+(x.st===-1?'<span class="negative">BEARISH</span>':"—")+'</td><td>'+Math.min(x.count,5)+'/5</td><td>'+fmt(x.volume,0)+'</td><td class="'+(x.change>=0?"positive":"negative")+'">'+fmt(x.change,2)+'%</td></tr>').join("")||'<tr><td colspan="8" class="empty">No contracts currently meet the selected conditions.</td></tr>';}
+function render(results){const target=Math.max(2,Math.min(100,Math.floor(Number($("bars").value)||5)));$("matches").textContent=results.length;$("rows").innerHTML=results.map(x=>'<tr><td>'+x.symbol+'</td><td class="negative">'+fmt(x.hist,8)+'</td><td>'+fmt(x.dif,8)+'</td><td>'+fmt(x.dea,8)+'</td><td>'+(x.st===-1?'<span class="negative">BEARISH</span>':"—")+'</td><td>'+Math.min(x.count,target)+'/'+target+'</td><td>'+fmt(x.volume,0)+'</td><td class="'+(x.change>=0?"positive":"negative")+'">'+fmt(x.change,2)+'%</td></tr>').join("")||'<tr><td colspan="8" class="empty">No contracts currently meet the selected conditions.</td></tr>';}
 async function scan(){
  if(busy)return;busy=true;$("scan").disabled=true;$("status").textContent="Loading exchange universe and 24-hour ticker data…";const started=Date.now();let errorCount=0;
  try{
   const [tickers,exchange]=await Promise.all([api("/fapi/v1/ticker/24hr"),api("/fapi/v1/exchangeInfo")]);
   const minVolume=Math.max(0,Number($("minVol").value)||0);
+  const candleTarget=Math.max(2,Math.min(100,Math.floor(Number($("bars").value)||5)));
   const tickerBySymbol=new Map(tickers.map(ticker=>[ticker.symbol,ticker]));
   const symbols=exchange.symbols.filter(item=>item.status==="TRADING"&&item.contractType==="PERPETUAL"&&item.quoteAsset==="USDT").map(item=>tickerBySymbol.get(item.symbol)).filter(ticker=>ticker&&Number(ticker.quoteVolume)>=minVolume);
   $("eligible").textContent=symbols.length;
@@ -99,7 +100,7 @@ async function scan(){
      if(!Array.isArray(candles)||candles.length<35)throw new Error("Insufficient 3m candle history");
      const indicators=macd(candles),last=indicators.hist.length-1;let count=0;
      for(let j=last;j>=0;j--){if(indicators.hist[j]<=0)count++;else break;}
-     if(count<1||count>=5)return null;
+     if(count<1||count>=candleTarget)return null;
      const difValue=indicators.dif[last],deaValue=indicators.dea[last];
      if($("dif").checked&&!(difValue<0))return null;
      if($("dea").checked&&!(deaValue<0))return null;
