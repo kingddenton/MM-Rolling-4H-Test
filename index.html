@@ -1458,6 +1458,7 @@ syncSpecialMacdUniverseControls();["specialMacdUniverseMode","specialMacdMinGain
  }
  const intro=view.querySelector(".candle-monitor-intro");
  const actionRow=$("autoBtn")?.closest(".row.actions");
+ const candleCountRow=$("eventBars")?.closest(".controls");
  const diagnostics=$("diagnosticsPanel");
  const qualifiedCoins=$("specialMacdCandidatesList");
  const liveFeed=$("twentyPctFeed");
@@ -1468,9 +1469,12 @@ syncSpecialMacdUniverseControls();["specialMacdUniverseMode","specialMacdMinGain
    if(intro)intro.insertAdjacentElement("afterend",actionRow);
    else view.insertBefore(actionRow,view.firstChild);
  }
- // Keep the top gainers/losers diagnostic immediately below the scan controls.
+ // Move the existing editable candle-count control into this tab, directly below the scan buttons.
+ if(candleCountRow && actionRow)actionRow.insertAdjacentElement("afterend",candleCountRow);
+ // Keep the top gainers/losers diagnostic immediately below the scan controls and candle count.
  if(qualifiedCoins){
-   if(actionRow)actionRow.insertAdjacentElement("afterend",qualifiedCoins);
+   const controlsAnchor=candleCountRow||actionRow;
+   if(controlsAnchor)controlsAnchor.insertAdjacentElement("afterend",qualifiedCoins);
    else if(intro)intro.insertAdjacentElement("afterend",qualifiedCoins);
    else view.insertBefore(qualifiedCoins,view.firstChild);
  }
