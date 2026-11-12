@@ -1474,9 +1474,13 @@ syncSpecialMacdUniverseControls();["specialMacdUniverseMode","specialMacdMinGain
  // Bring the REVERSAL universe mode and its own minimum-24h-volume control alongside Candle count.
  // Leave the main Market universe and main scanner volume controls in their original section.
  const reversalUniverseControl=$("specialMacdUniverseMode")?.closest("div");
+ const reversalThresholdControl=$("specialThresholdControls");
+ const reversalRankingControl=$("specialRankingControls");
  const reversalMinVolumeControl=$("specialMacdMinVolume")?.closest("div");
  if(candleCountRow){
    if(reversalUniverseControl)candleCountRow.appendChild(reversalUniverseControl);
+   if(reversalThresholdControl)candleCountRow.appendChild(reversalThresholdControl);
+   if(reversalRankingControl)candleCountRow.appendChild(reversalRankingControl);
    if(reversalMinVolumeControl)candleCountRow.appendChild(reversalMinVolumeControl);
  }
  // Keep the top gainers/losers diagnostic immediately below the scan controls and candle count.
