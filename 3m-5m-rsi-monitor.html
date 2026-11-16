@@ -33,6 +33,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
   <div class="field"><label for="min5">MINIMUM 5M RSI (≥)</label><input id="min5" type="number" min="0" max="100" step="1" value="50"></div>
   <div class="field"><label for="workers">PARALLEL WORKERS</label><input id="workers" type="number" min="1" max="20" value="8"></div>
   <div class="field"><label for="refresh">AUTO REFRESH</label><select id="refresh"><option value="0">Off</option><option value="30">Every 30 seconds</option><option value="60" selected>Every 60 seconds</option><option value="120">Every 2 minutes</option><option value="300">Every 5 minutes</option></select></div>
+  <div class="field"><label for="continuous">SCANNING MODE</label><select id="continuous"><option value="on" selected>Continuous scanning</option><option value="off">Scan once and stop</option></select></div>
  </div>
  <div class="actions"><button id="start">Start scanning</button><button id="once" class="secondary">Scan once</button><button id="stop" class="stop">Stop</button></div>
  <div class="status" id="status">Ready. Configure the scanner and select Start scanning.</div>
@@ -100,7 +101,7 @@ async function runScan(){
   const errors=results.filter(x=>x&&x.error).length;
   setStatus('Scan complete: '+matches.length+' coins match both RSI filters out of '+good.length+' valid pairs'+(errors?' · '+errors+' pair errors':'')+'.');
  }catch(e){setStatus(e.message||'Scan failed. Check connection and retry.',true)}
- finally{scanBusy=false;if(running&&!stopRequested){const sec=Number($('refresh').value)||60;if(sec>0)loopTimer=setTimeout(runScan,sec*1000);else running=false}}
+ finally{scanBusy=false;if(running&&!stopRequested){if($('continuous').value==='on'){const sec=Number($('refresh').value);loopTimer=setTimeout(runScan,(sec>0?sec:60)*1000)}else{running=false;setStatus('Single scan complete. Select Continuous scanning to keep the monitor running.')}}}
 }
 function pill(v){const cls=v<30?'low':v>70?'high':'mid';return '<span class="pill '+cls+'">'+fmt(v)+'</span>'}
 $('start').addEventListener('click',()=>{if(running)return;running=true;stopRequested=false;clearTimeout(loopTimer);runScan()});
