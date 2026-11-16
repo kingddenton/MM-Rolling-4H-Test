@@ -46,7 +46,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 <section class="panel">
  <div class="top"><b>RSI filter matches</b><span class="note">Both conditions must pass: 3M RSI ≥ threshold AND 5M RSI ≥ threshold</span></div>
  <div class="stats" style="margin:8px 0"><span>Matching coins: <b id="matches">0</b></span><span>Filter: <b id="filterSummary">3M ≥ 70 · 5M ≥ 50</b></span></div>
- <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>24H QUOTE VOL</th><th>3M RSI</th><th>5M RSI</th><th>UPDATED</th></tr></thead><tbody id="rows"><tr><td colspan="6" class="muted">No scan results yet.</td></tr></tbody></table></div>
+ <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>24H QUOTE VOL</th><th>3M RSI</th><th>5M RSI</th><th>15M RSI</th><th>1H RSI</th><th>4H RSI</th><th>UPDATED</th></tr></thead><tbody id="rows"><tr><td colspan="9" class="muted">No scan results yet.</td></tr></tbody></table></div>
 </section>
 <section class="panel">
  <div class="top"><b>Potential buy setups · RSI + MACD</b><span class="note">Same selected timeframe for RSI and MACD</span></div>
@@ -103,21 +103,21 @@ async function runScan(){
   const min3=Math.max(0,Math.min(100,Number($('min3').value)||0));
   const min5=Math.max(0,Math.min(100,Number($('min5').value)||0));
   $('filterSummary').textContent='3M ≥ '+fmt(min3)+' · 5M ≥ '+fmt(min5);
-  setStatus('Scanning '+universe.length+' pairs on 3m and 5m…');
+  setStatus('Scanning '+universe.length+' pairs on 3m, 5m, 15m, 1h and 4h…');
   const results=await mapLimit(universe,workers,async item=>{
-   const [ka,kb]=await Promise.all(['3m','5m'].map(async tf=>{
-    return getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(item.symbol)+'&interval='+tf+'&limit=100');
-   }));
-   const c3=ka.map(x=>Number(x[4])),c5=kb.map(x=>Number(x[4]));
+   const intervals=['3m','5m','15m','1h','4h'];
+   const klines=await Promise.all(intervals.map(tf=>getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(item.symbol)+'&interval='+tf+'&limit=100')));
+   const closes=klines.map(k=>k.map(x=>Number(x[4])));
+   const [c3,c5,c15,c1h,c4h]=closes;
    const buyTf=$('buyTf').value,buyCloses=buyTf==='3m'?c3:c5;
    const required=Math.max(1,Math.min(20,Number($('macdCandles').value)||3));
-   return {...item,r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),buyRsi:rsiWilder(buyCloses,period),macd:macdState(buyCloses,required)};
+   return {...item,r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),macd:macdState(buyCloses,required)};
   });
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
   const matches=good.filter(x=>x.r3>=min3&&x.r5>=min5);
   matches.sort((a,b)=>(b.r3+b.r5)-(a.r3+a.r5));
   $('matches').textContent=matches.length;
-  $('rows').innerHTML=matches.length?matches.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td><td>'+pill(x.r3)+'</td><td>'+pill(x.r5)+'</td><td>'+new Date().toLocaleTimeString()+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">No coins currently meet both RSI thresholds.</td></tr>';
+  $('rows').innerHTML=matches.length?matches.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td><td>'+pill(x.r3)+'</td><td>'+pill(x.r5)+'</td><td>'+pill(x.r15)+'</td><td>'+pill(x.r1h)+'</td><td>'+pill(x.r4h)+'</td><td>'+new Date().toLocaleTimeString()+'</td></tr>').join(''):'<tr><td colspan="9" class="muted">No coins currently meet both RSI thresholds.</td></tr>';
   const buyMin=Math.max(0,Math.min(100,Number($('buyRsiMin').value)||0));
   const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
   const buyTf=$('buyTf').value,required=Math.max(1,Math.min(20,Number($('macdCandles').value)||3));
