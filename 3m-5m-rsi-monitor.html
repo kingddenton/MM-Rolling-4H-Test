@@ -29,6 +29,8 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
   <div class="field"><label for="universe">PAIRS TO SCAN</label><select id="universe"><option value="50">Top 50</option><option value="100" selected>Top 100</option><option value="200">Top 200</option><option value="all">All eligible pairs</option></select></div>
   <div class="field"><label for="volume">MIN 24H QUOTE VOLUME (USDT)</label><input id="volume" type="number" min="0" step="100000" value="2000000"></div>
   <div class="field"><label for="period">RSI PERIOD</label><input id="period" type="number" min="2" max="100" value="14"></div>
+  <div class="field"><label for="min3">MINIMUM 3M RSI (≥)</label><input id="min3" type="number" min="0" max="100" step="1" value="70"></div>
+  <div class="field"><label for="min5">MINIMUM 5M RSI (≥)</label><input id="min5" type="number" min="0" max="100" step="1" value="50"></div>
   <div class="field"><label for="workers">PARALLEL WORKERS</label><input id="workers" type="number" min="1" max="20" value="8"></div>
   <div class="field"><label for="refresh">AUTO REFRESH</label><select id="refresh"><option value="0">Off</option><option value="30">Every 30 seconds</option><option value="60" selected>Every 60 seconds</option><option value="120">Every 2 minutes</option><option value="300">Every 5 minutes</option></select></div>
  </div>
@@ -37,7 +39,8 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <div class="stats" style="margin-top:9px"><span>Eligible pairs: <b id="eligible">—</b></span><span>Scanned: <b id="scanned">0</b></span><span>Last scan: <b id="last">—</b></span></div>
 </section>
 <section class="panel">
- <div class="top"><b>Live RSI results</b><span class="note">Green: RSI below 30 · Red: RSI above 70 · Amber: 30–70</span></div>
+ <div class="top"><b>RSI filter matches</b><span class="note">Both conditions must pass: 3M RSI ≥ threshold AND 5M RSI ≥ threshold</span></div>
+ <div class="stats" style="margin:8px 0"><span>Matching coins: <b id="matches">0</b></span><span>Filter: <b id="filterSummary">3M ≥ 70 · 5M ≥ 50</b></span></div>
  <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>24H QUOTE VOL</th><th>3M RSI</th><th>5M RSI</th><th>UPDATED</th></tr></thead><tbody id="rows"><tr><td colspan="6" class="muted">No scan results yet.</td></tr></tbody></table></div>
 </section>
 <p class="note">RSI uses Wilder's smoothing (default period 14) and includes the currently forming Binance candle, so values can change before candle close. This page is standalone and does not share code, state, workers, or API polling with the MACD scanner.</p>
@@ -77,6 +80,9 @@ async function runScan(){
   const choice=$('universe').value;if(choice!=='all')universe=universe.slice(0,Number(choice));
   const period=Math.max(2,Math.min(100,Number($('period').value)||14));
   const workers=Math.max(1,Math.min(20,Number($('workers').value)||8));
+  const min3=Math.max(0,Math.min(100,Number($('min3').value)||0));
+  const min5=Math.max(0,Math.min(100,Number($('min5').value)||0));
+  $('filterSummary').textContent='3M ≥ '+fmt(min3)+' · 5M ≥ '+fmt(min5);
   setStatus('Scanning '+universe.length+' pairs on 3m and 5m…');
   const results=await mapLimit(universe,workers,async item=>{
    const [a,b]=await Promise.all(['3m','5m'].map(async tf=>{
@@ -86,11 +92,13 @@ async function runScan(){
    return {...item,r3:a,r5:b};
   });
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
-  good.sort((a,b)=>Math.min(a.r3,a.r5)-Math.min(b.r3,b.r5));
-  $('rows').innerHTML=good.length?good.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td><td>'+pill(x.r3)+'</td><td>'+pill(x.r5)+'</td><td>'+new Date().toLocaleTimeString()+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">No valid RSI results returned.</td></tr>';
+  const matches=good.filter(x=>x.r3>=min3&&x.r5>=min5);
+  matches.sort((a,b)=>(b.r3+b.r5)-(a.r3+a.r5));
+  $('matches').textContent=matches.length;
+  $('rows').innerHTML=matches.length?matches.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td><td>'+pill(x.r3)+'</td><td>'+pill(x.r5)+'</td><td>'+new Date().toLocaleTimeString()+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">No coins currently meet both RSI thresholds.</td></tr>';
   $('last').textContent=new Date().toLocaleTimeString();
   const errors=results.filter(x=>x&&x.error).length;
-  setStatus('Scan complete: '+good.length+' pairs returned RSI values'+(errors?' · '+errors+' pair errors':'')+'.');
+  setStatus('Scan complete: '+matches.length+' coins match both RSI filters out of '+good.length+' valid pairs'+(errors?' · '+errors+' pair errors':'')+'.');
  }catch(e){setStatus(e.message||'Scan failed. Check connection and retry.',true)}
  finally{scanBusy=false;if(running&&!stopRequested){const sec=Number($('refresh').value)||60;if(sec>0)loopTimer=setTimeout(runScan,sec*1000);else running=false}}
 }
