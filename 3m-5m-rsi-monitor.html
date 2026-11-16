@@ -54,6 +54,12 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>TIMEFRAME</th><th>RSI</th><th>DIF</th><th>DEA</th><th>MACD CANDLES</th></tr></thead><tbody id="buyRows"><tr><td colspan="7" class="muted">No potential buy setups yet.</td></tr></tbody></table></div>
  <p class="note">Bullish MACD requires DIF above zero and DIF above DEA for the configured number of consecutive candles. Standard MACD 12, 26, 9. This is a screening condition, not a trade instruction.</p>
 </section>
+<section class="panel">
+ <div class="top"><b>5M RSI ≥ 70 · NEGATIVE MACD ALERT</b><span class="note">5M RSI at least 70 AND MACD histogram below zero</span></div>
+ <div class="stats" style="margin:8px 0"><span>Alert matches: <b id="negativeMacdMatches">0</b></span><span>Trigger: <b>5M RSI ≥ 70 · MACD histogram &lt; 0</b></span></div>
+ <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>5M RSI</th><th>DIF</th><th>DEA</th><th>MACD HISTOGRAM</th></tr></thead><tbody id="negativeMacdRows"><tr><td colspan="6" class="muted">No alert matches yet.</td></tr></tbody></table></div>
+ <p class="note">This alert is independent of the Potential Buy Setups. Negative MACD is defined here strictly as the MACD histogram (DIF − DEA) being below zero. The alert uses the current forming 5-minute candle.</p>
+</section>
 <p class="note">RSI uses Wilder's smoothing (default period 14) and includes the currently forming Binance candle, so values can change before candle close. MACD also evaluates the currently forming candle. This page is standalone and does not share code, state, workers, or API polling with the MACD scanner.</p>
 </main>
 <script>
@@ -80,7 +86,7 @@ function macdState(closes,required){
  const dif=fast.map((v,i)=>v-slow[i]),dea=ema(dif,9);
  let count=0;
  for(let i=dif.length-1;i>=0;i--){if(dif[i]>0&&dif[i]>dea[i])count++;else break}
- return {bull:count>=required,count,dif:dif[dif.length-1],dea:dea[dea.length-1]};
+ const lastDif=dif[dif.length-1],lastDea=dea[dea.length-1];return {bull:count>=required,count,dif:lastDif,dea:lastDea,hist:lastDif-lastDea};
 }
 async function getJson(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error('Binance HTTP '+r.status);return r.json()}
 async function mapLimit(items,limit,fn){
@@ -111,7 +117,7 @@ async function runScan(){
    const [c3,c5,c15,c1h,c4h]=closes;
    const buyTf=$('buyTf').value,buyCloses=buyTf==='3m'?c3:c5;
    const required=Math.max(1,Math.min(20,Number($('macdCandles').value)||3));
-   return {...item,r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),macd:macdState(buyCloses,required)};
+   return {...item,r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
   });
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
   const matches=good.filter(x=>x.r3>=min3&&x.r5>=min5);
@@ -125,6 +131,9 @@ async function runScan(){
   $('buyMatches').textContent=buys.length;
   $('buySummary').textContent=buyTf.toUpperCase()+' RSI '+fmt(buyMin)+'–'+fmt(buyMax)+' · MACD bullish for '+required+' consecutive candles';
   $('buyRows').innerHTML=buys.length?buys.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+buyTf.toUpperCase()+'</td><td>'+pill(x.buyRsi)+'</td><td>'+x.macd.dif.toPrecision(6)+'</td><td>'+x.macd.dea.toPrecision(6)+'</td><td><span class="pill low">'+x.macd.count+'</span></td></tr>').join(''):'<tr><td colspan="7" class="muted">No coins currently meet the potential buy conditions.</td></tr>';
+  const negativeMacdAlerts=good.filter(x=>x.r5>=70&&x.macd5&&x.macd5.hist<0).sort((a,b)=>b.r5-a.r5);
+  $('negativeMacdMatches').textContent=negativeMacdAlerts.length;
+  $('negativeMacdRows').innerHTML=negativeMacdAlerts.length?negativeMacdAlerts.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+pill(x.r5)+'</td><td>'+x.macd5.dif.toPrecision(6)+'</td><td>'+x.macd5.dea.toPrecision(6)+'</td><td class="error">'+x.macd5.hist.toPrecision(6)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">No coins currently meet 5M RSI ≥70 with a negative MACD histogram.</td></tr>';
   $('last').textContent=new Date().toLocaleTimeString();
   const errors=results.filter(x=>x&&x.error).length;
   setStatus('Scan complete: '+matches.length+' coins match both RSI filters out of '+good.length+' valid pairs'+(errors?' · '+errors+' pair errors':'')+'.');
