@@ -24,7 +24,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 </head>
 <body><main>
 <div class="top"><h1>3M–5M RSI Monitor</h1><span class="tag">TEST ENVIRONMENT</span></div>
-<p class="sub">Independent Binance USDⓈ-M USDT perpetual scanner · No trading · No API key required</p>
+<p class="sub">Independent Binance USDⓈ-M USDT-margined scanner · Crypto + TradFi · No trading · No API key required</p>
 <section class="panel">
  <div class="controls">
   <div class="field"><label for="universeMode">UNIVERSE SELECTION</label><select id="universeMode"><option value="count" selected>Top X / Bottom X</option><option value="percent">Top X% / Bottom X%</option></select></div>
@@ -47,9 +47,9 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 <section class="panel">
  <details id="universeDetails" open>
   <summary style="cursor:pointer;font-weight:800;display:flex;justify-content:space-between;gap:12px;align-items:center"><span>Selected Universe · <span id="universeCount">0</span> coins</span><span class="note">Tap to collapse / expand</span></summary>
-  <div class="stats" style="margin:10px 0"><span>Eligible after volume filter: <b id="eligibleUniverseCount">0</b></span><span>Selection: <b id="universeRule">Top 10 / Bottom 10 · 24H change</b></span><span>Minimum 24H quote volume: <b id="universeVolumeRule">2,000,000 USDT</b></span></div>
+  <div class="stats" style="margin:10px 0"><span>Eligible after USDT volume filter: <b id="eligibleUniverseCount">0</b></span><span>Selection: <b id="universeRule">Top 10 / Bottom 10 · 24H change</b></span><span>Minimum 24H USDT quote volume: <b id="universeVolumeRule">2,000,000 USDT</b></span></div>
   <div class="wrap"><table><thead><tr><th>#</th><th>SIDE</th><th>SYMBOL</th><th>24H CHANGE</th><th>24H QUOTE VOL (USDT)</th></tr></thead><tbody id="universeRows"><tr><td colspan="5" class="muted">Universe will appear when scanning starts.</td></tr></tbody></table></div>
-  <p class="note">The scan universe is built from the strongest and weakest 24H price performers among eligible Binance USDⓈ-M USDT perpetual pairs. A symbol is included only once.</p>
+  <p class="note">The scan universe is built from the strongest and weakest 24H price performers among active Binance USDⓈ-M USDT-margined contracts, including crypto and TradFi. USDC-margined contracts are excluded. A symbol is included only once.</p>
  </details>
 </section>
 <section class="panel">
@@ -158,11 +158,11 @@ async function mapLimit(items,limit,fn){
 async function runScan(){
  if(scanBusy)return;scanBusy=true;stopRequested=false;setRunningButton(running);$('scanned').textContent='0';
  try{
-  setStatus('Loading eligible USDT perpetual markets…');
+  setStatus('Loading active USDⓈ-M USDT-margined markets (including TradFi)…');
   const [info,tickers]=await Promise.all([getJson(API+'/fapi/v1/exchangeInfo'),getJson(API+'/fapi/v1/ticker/24hr')]);
   const tickerMap=new Map(tickers.map(t=>[t.symbol,t]));
   const minVol=Math.max(0,Number($('volume').value)||0);
-  const eligible=info.symbols.filter(s=>s.status==='TRADING'&&s.contractType==='PERPETUAL'&&s.quoteAsset==='USDT').map(s=>{const t=tickerMap.get(s.symbol);return t?{symbol:s.symbol,volume:Number(t.quoteVolume)||0,change:Number(t.priceChangePercent)||0}:null}).filter(x=>x&&x.volume>=minVol);
+  const eligible=info.symbols.filter(s=>s.status==='TRADING'&&s.quoteAsset==='USDT'&&s.marginAsset==='USDT').map(s=>{const t=tickerMap.get(s.symbol);return t?{symbol:s.symbol,volume:Number(t.quoteVolume)||0,change:Number(t.priceChangePercent)||0}:null}).filter(x=>x&&x.volume>=minVol);
   const eligibleCount=eligible.length;
   $('eligible').textContent=eligibleCount;
   const ranked=[...eligible].sort((a,b)=>b.change-a.change);
@@ -186,7 +186,7 @@ async function runScan(){
   const min3=Math.max(0,Math.min(100,Number($('min3').value)||0));
   const min5=Math.max(0,Math.min(100,Number($('min5').value)||0));
   $('filterSummary').textContent='3M ≥ '+fmt(min3)+' · 5M ≥ '+fmt(min5);
-  setStatus('Scanning '+universe.length+' pairs on 3m, 5m, 15m, 1h and 4h…');
+  setStatus('Scanning '+universe.length+' USDT-margined USDⓈ-M contracts on 3m, 5m, 15m, 1h and 4h…');
   const results=await mapLimit(universe,workers,async item=>{
    const intervals=['3m','5m','15m','1h','4h'];
    const klines=await Promise.all(intervals.map(tf=>getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(item.symbol)+'&interval='+tf+'&limit=100')));
