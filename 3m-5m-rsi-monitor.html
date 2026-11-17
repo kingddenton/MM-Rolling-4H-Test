@@ -48,10 +48,10 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>24H QUOTE VOL</th><th>3M RSI</th><th>5M RSI</th><th>15M RSI</th><th>1H RSI</th><th>4H RSI</th><th>UPDATED</th></tr></thead><tbody id="rows"><tr><td colspan="9" class="muted">No scan results yet.</td></tr></tbody></table></div>
 </section>
 <section class="panel">
- <div class="top"><b>Potential buy setups · RSI + MACD</b><span class="note">Qualifies immediately when 3M RSI is in range and MACD is green</span></div>
+ <div class="top"><b>Potential buy setups · RSI + MACD</b><span class="note">RSI must enter its range after a bullish MACD cross and remain there</span></div>
  <div class="stats" style="margin:8px 0"><span>Qualified setups: <b id="buyMatches">0</b></span><span>Rule: <b id="buySummary">3M RSI 58–63 · MACD green · expires after 5 candles</b></span></div>
  <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>TIMEFRAME</th><th>RSI</th><th>DIF</th><th>DEA</th><th>QUALIFICATION CANDLES</th></tr></thead><tbody id="buyRows"><tr><td colspan="7" class="muted">No potential buy setups yet.</td></tr></tbody></table></div>
- <p class="note">A coin qualifies immediately when its current 3-minute RSI is inside the editable range and its MACD is green (DIF above DEA). It remains listed for the configured number of 3-minute candles, displayed as 1/N, 2/N, and so on, then expires. Standard MACD 12, 26, 9. This is a screening condition, not a trade instruction.</p>
+ <p class="note">A bullish 3-minute DIF/DEA crossover starts the editable candle window. The RSI must enter the editable range within that window while MACD is green. Once qualified, RSI must remain inside the range and MACD must remain green through the current candle; otherwise the setup is disqualified. The display shows the candle number since the crossover (for example, 4/10). Standard MACD 12, 26, 9. This is a screening condition, not a trade instruction.</p>
 </section>
 <section class="panel">
  <div class="top"><b>5M RSI ≥ 70 · NEGATIVE MACD ALERT</b><span class="note">5M RSI at least 70 AND MACD histogram below zero</span></div>
@@ -66,7 +66,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 const API='https://fapi.binance.com';
 const $=id=>document.getElementById(id);
 let running=false,loopTimer=null,scanBusy=false,stopRequested=false;
-const buySetups=new Map();
+
 const fmt=n=>Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
 function setStatus(s,err=false){$('status').textContent=s;$('status').className='status'+(err?' error':'')}
 function rsiWilder(closes,period){
@@ -87,6 +87,43 @@ function macdState(closes,required){
  let count=0;
  for(let i=dif.length-1;i>=0;i--){if(dif[i]>0&&dif[i]>dea[i])count++;else break}
  const lastDif=dif[dif.length-1],lastDea=dea[dea.length-1];return {bull:count>=required,count,dif:lastDif,dea:lastDea,hist:lastDif-lastDea};
+}
+function potentialBuyState(closes,period,minRsi,maxRsi,window){
+ if(closes.length<Math.max(40,period+1))return {qualifies:false,age:0};
+ const ema=(values,p)=>{const k=2/(p+1);let v=values[0];const out=[v];for(let i=1;i<values.length;i++){v=values[i]*k+v*(1-k);out.push(v)}return out};
+ const fast=ema(closes,12),slow=ema(closes,26);
+ const dif=fast.map((v,i)=>v-slow[i]),dea=ema(dif,9);
+ const rsi=new Array(closes.length).fill(NaN);
+ let gain=0,loss=0;
+ for(let i=1;i<=period;i++){const d=closes[i]-closes[i-1];if(d>0)gain+=d;else loss-=d}
+ let avgG=gain/period,avgL=loss/period;
+ const value=()=>avgL===0?(avgG===0?50:100):avgG===0?0:100-100/(1+avgG/avgL);
+ rsi[period]=value();
+ for(let i=period+1;i<closes.length;i++){
+  const d=closes[i]-closes[i-1];
+  avgG=(avgG*(period-1)+Math.max(d,0))/period;
+  avgL=(avgL*(period-1)+Math.max(-d,0))/period;
+  rsi[i]=value();
+ }
+ let crossIndex=-1,crossType='';
+ for(let i=dif.length-1;i>=1;i--){
+  if(dif[i]>dea[i]&&dif[i-1]<=dea[i-1]){crossIndex=i;crossType='up';break}
+  if(dif[i]<dea[i]&&dif[i-1]>=dea[i-1]){crossIndex=i;crossType='down';break}
+ }
+ if(crossType!=='up')return {qualifies:false,age:0};
+ const age=closes.length-crossIndex;
+ if(age<1||age>window)return {qualifies:false,age};
+ let qualified=false;
+ for(let i=crossIndex;i<closes.length;i++){
+  const green=dif[i]>dea[i];
+  const inRange=Number.isFinite(rsi[i])&&rsi[i]>=minRsi&&rsi[i]<=maxRsi;
+  if(!qualified){
+   if(green&&inRange)qualified=true;
+  }else if(!green||!inRange){
+   return {qualifies:false,age};
+  }
+ }
+ return {qualifies:qualified,age};
 }
 function macdCrossoverAge(closes){
  if(closes.length<40)return 0;
@@ -130,7 +167,7 @@ async function runScan(){
    const [c3,c5,c15,c1h,c4h]=closes;
    const buyCloses=c3;
    const required=Math.max(1,Math.min(20,Number($('macdCandles').value)||5));
-   return {...item,r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),buyCandleTime:Number(klines[0][klines[0].length-1][0]),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
+   const buyMin=Math.max(0,Math.min(100,Number($('buyRsiMin').value)||0));\n   const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));\n   return {...item,r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),buyState:potentialBuyState(buyCloses,period,buyMin,buyMax,required),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
   });
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
   const matches=good.filter(x=>x.r3>=min3&&x.r5>=min5);
@@ -140,34 +177,10 @@ async function runScan(){
   const buyMin=Math.max(0,Math.min(100,Number($('buyRsiMin').value)||0));
   const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
   const required=Math.max(1,Math.min(20,Number($('macdCandles').value)||5));
-  const currentBySymbol=new Map(good.map(x=>[x.symbol,x]));
-  // Keep each qualification for N distinct 3-minute candles, independent of scan refresh frequency.
-  for(const x of good){
-   const qualifies=x.buyRsi>=buyMin&&x.buyRsi<=buyMax&&Number.isFinite(x.macd.dif)&&Number.isFinite(x.macd.dea)&&x.macd.dif>x.macd.dea;
-   const existing=buySetups.get(x.symbol);
-   if(existing){
-    const elapsed=Math.floor((x.buyCandleTime-existing.startCandleTime)/180000);
-    existing.count=Math.max(1,elapsed+1);
-    existing.lastCandleTime=x.buyCandleTime;
-    existing.data=x;
-    if(existing.count>required)buySetups.delete(x.symbol);
-   }else if(qualifies){
-    buySetups.set(x.symbol,{startCandleTime:x.buyCandleTime,lastCandleTime:x.buyCandleTime,count:1,data:x});
-   }
-  }
-  // Expire any setup whose candle window has passed, even if its pair had a scan error.
-  for(const [symbol,setup] of buySetups){
-   const latest= currentBySymbol.get(symbol);
-   if(latest){
-    setup.count=Math.max(1,Math.floor((latest.buyCandleTime-setup.startCandleTime)/180000)+1);
-    setup.data=latest;
-   }
-   if(setup.count>required)buySetups.delete(symbol);
-  }
-  const buys=[...buySetups.entries()].map(([symbol,setup])=>({...setup.data,qualificationCount:setup.count})).sort((a,b)=>b.qualificationCount-a.qualificationCount||b.macd.dif-a.macd.dif);
+  const buys=good.filter(x=>x.buyState&&x.buyState.qualifies).sort((a,b)=>a.buyState.age-b.buyState.age||b.macd.dif-a.macd.dif);
   $('buyMatches').textContent=buys.length;
-  $('buySummary').textContent='3M RSI '+fmt(buyMin)+'–'+fmt(buyMax)+' · MACD green · expires after '+required+' candles';
-  $('buyRows').innerHTML=buys.length?buys.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>3M</td><td>'+pill(x.buyRsi)+'</td><td>'+x.macd.dif.toPrecision(6)+'</td><td>'+x.macd.dea.toPrecision(6)+'</td><td><span class="pill low">'+x.qualificationCount+'/'+required+'</span></td></tr>').join(''):'<tr><td colspan="7" class="muted">No active potential buy setups.</td></tr>';
+  $('buySummary').textContent='3M RSI '+fmt(buyMin)+'–'+fmt(buyMax)+' · enter range after bullish MACD cross and remain in range · '+required+' candles';
+  $('buyRows').innerHTML=buys.length?buys.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>3M</td><td>'+pill(x.buyRsi)+'</td><td>'+x.macd.dif.toPrecision(6)+'</td><td>'+x.macd.dea.toPrecision(6)+'</td><td><span class="pill low">'+x.buyState.age+'/'+required+'</span></td></tr>').join(''):'<tr><td colspan="7" class="muted">No active potential buy setups.</td></tr>';
   const negativeMacdAlerts=good.filter(x=>x.r5>=70&&x.macd5&&x.macd5.hist<0).sort((a,b)=>b.r5-a.r5);
   $('negativeMacdMatches').textContent=negativeMacdAlerts.length;
   $('negativeMacdRows').innerHTML=negativeMacdAlerts.length?negativeMacdAlerts.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+pill(x.r5)+'</td><td>'+x.macd5.dif.toPrecision(6)+'</td><td>'+x.macd5.dea.toPrecision(6)+'</td><td class="error">'+x.macd5.hist.toPrecision(6)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">No coins currently meet 5M RSI ≥70 with a negative MACD histogram.</td></tr>';
