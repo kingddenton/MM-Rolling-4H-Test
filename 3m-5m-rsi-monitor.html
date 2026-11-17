@@ -164,7 +164,7 @@ async function runScan(){
   const results=await mapLimit(universe,workers,async item=>{
    const intervals=['3m','5m','15m','1h','4h'];
    const klines=await Promise.all(intervals.map(tf=>getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(item.symbol)+'&interval='+tf+'&limit=100')));
-   const closes=klines.map(k=>k.map(x=>Number(x[4])));
+   const closes=klines.map(k=>k.slice(0,-1).map(x=>Number(x[4]))); // Exclude Binance's still-forming candle: all indicators use closed candles only.
    const [c3,c5,c15,c1h,c4h]=closes;
    const buyCloses=c3;
    const required=Math.max(1,Math.min(20,Number($('macdCandles').value)||5));
