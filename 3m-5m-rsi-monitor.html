@@ -10,6 +10,8 @@
 main{max-width:1180px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
 h1{font-size:22px;margin:0}.tag{font-size:11px;font-weight:800;letter-spacing:.08em;color:#111827;background:var(--amber);padding:5px 9px;border-radius:6px}
 .sub{color:var(--muted);margin:5px 0 16px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+.setup-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.setup-grid>.panel{margin:0;min-width:0}
 .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px}.field label{display:block;color:var(--muted);font-size:11px;margin-bottom:5px;font-weight:700}
 input,select,button{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;background:#0c1625;color:var(--text);font:inherit}
 #universeDetails>summary{list-style:none}#universeDetails>summary::-webkit-details-marker{display:none}#universeDetails>summary:after{content:'＋';color:var(--blue);font-size:16px}#universeDetails[open]>summary:after{content:'−'}
@@ -19,6 +21,7 @@ button{cursor:pointer;font-weight:750;background:#1d4ed8;border-color:#2563eb}bu
 table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}th{color:var(--muted);font-size:11px;position:sticky;top:0;background:var(--panel)}
 .wrap{overflow:auto}.pill{display:inline-block;border-radius:20px;padding:3px 8px;font-size:11px;font-weight:800}.low{color:#06281c;background:var(--green)}.high{color:#3b0711;background:var(--red)}.mid{color:#3a2a05;background:#fcd34d}
 .num{font-weight:800}.muted{color:var(--muted)}.error{color:var(--red)}.note{font-size:12px;color:var(--muted)}
+@media(max-width:760px){.setup-grid{grid-template-columns:1fr}}
 @media(max-width:600px){main{padding:11px}h1{font-size:19px}.panel{padding:11px}}
 </style>
 </head>
@@ -60,6 +63,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <div class="stats" style="margin:8px 0"><span>Matching coins: <b id="matches">0</b></span><span>Filter: <b id="filterSummary">3M ≥ 70 · 5M ≥ 50</b></span></div>
  <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>24H QUOTE VOL</th><th>3M RSI</th><th>5M RSI</th><th>15M RSI</th><th>1H RSI</th><th>4H RSI</th><th>UPDATED</th></tr></thead><tbody id="rows"><tr><td colspan="9" class="muted">No scan results yet.</td></tr></tbody></table></div>
 </section>
+<div class="setup-grid">
 <section class="panel">
  <div class="top"><b>Potential buy setups · RSI + MACD</b><span class="note">RSI must enter its range after a bullish MACD cross and remain there</span></div>
  <div class="stats" style="margin:8px 0"><span>Qualified setups: <b id="buyMatches">0</b></span><span>Rule: <b id="buySummary">3M RSI 58–63 · MACD green · expires after 5 candles</b></span></div>
@@ -72,6 +76,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>TIMEFRAME</th><th>RSI</th><th>DIF</th><th>DEA</th><th>QUALIFICATION CANDLES</th></tr></thead><tbody id="sellRows"><tr><td colspan="7" class="muted">No potential sell setups yet.</td></tr></tbody></table></div>
  <p class="note">A bearish 3-minute DIF/DEA crossover starts the editable sell candle window. RSI must enter the editable sell range within that window while MACD is red (DIF below DEA). Once qualified, RSI must remain inside the range and MACD must remain red through the current completed candle; otherwise the setup is disqualified. The sell alert uses the same selected universe as the buy alert. Standard MACD 12, 26, 9. This is a screening condition, not a trade instruction.</p>
 </section>
+</div>
 <section class="panel">
  <div class="top"><b>5M RSI ≥ 70 · NEGATIVE MACD ALERT</b><span class="note">5M RSI at least 70 AND MACD histogram below zero</span></div>
  <div class="stats" style="margin:8px 0"><span>Alert matches: <b id="negativeMacdMatches">0</b></span><span>Trigger: <b>5M RSI ≥ 70 · MACD histogram &lt; 0</b></span></div>
