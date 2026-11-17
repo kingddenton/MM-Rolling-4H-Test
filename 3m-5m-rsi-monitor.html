@@ -276,7 +276,7 @@ async function runScan(){
   const sellMin=Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33));
   const sellMax=Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42));
   const sellRequired=Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5));
-  const sells=newestFirst(good.filter(x=>x.sellState&&x.sellState.qualifies),alertFirstSeen.sells);
+  const sells=newestFirst(good.filter(x=>x.sellState&&x.sellState.qualifies),alertFirstSeen.sells).slice(0,10);
   $('sellMatches').textContent=sells.length;
   $('sellSummary').textContent='3M RSI '+fmt(sellMin)+'–'+fmt(sellMax)+' · enter range after bearish MACD cross and remain in range · '+sellRequired+' candles';
   $('sellRows').innerHTML=sells.length?sells.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>3M</td><td>'+pill(x.buyRsi)+'</td><td><span class="pill high">'+x.sellState.age+'/'+sellRequired+'</span></td></tr>').join(''):'<tr><td colspan="5" class="muted">No active potential sell setups.</td></tr>';
