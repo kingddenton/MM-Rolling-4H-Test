@@ -27,8 +27,8 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 <p class="sub">Independent Binance USDⓈ-M USDT-margined scanner · Crypto + TradFi · No trading · No API key required</p>
 <section class="panel">
  <div class="controls">
-  <div class="field"><label for="universeMode">UNIVERSE SELECTION</label><select id="universeMode"><option value="count" selected>Top X / Bottom X</option><option value="percent">Top X% / Bottom X%</option></select></div>
-  <div class="field"><label for="universeSize">X · EACH SIDE</label><input id="universeSize" type="number" min="1" max="50" step="1" value="10"></div>
+  <div class="field"><label for="universeMode">UNIVERSE SELECTION</label><select id="universeMode"><option value="count">Top X / Bottom X</option><option value="percent" selected>24hr Price % Change</option></select></div>
+  <div class="field"><label for="universeSize">24HR CHANGE THRESHOLD (%)</label><input id="universeSize" type="number" min="0" max="100" step="0.1" value="10"></div>
   <div class="field"><label for="volume">MIN 24H QUOTE VOLUME (USDT)</label><input id="volume" type="number" min="0" step="100000" value="2000000"></div>
   <div class="field"><label for="period">RSI PERIOD</label><input id="period" type="number" min="2" max="100" value="14"></div>
   <div class="field"><label for="min3">MINIMUM 3M RSI (≥)</label><input id="min3" type="number" min="0" max="100" step="1" value="70"></div>
@@ -47,9 +47,9 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 <section class="panel">
  <details id="universeDetails" open>
   <summary style="cursor:pointer;font-weight:800;display:flex;justify-content:space-between;gap:12px;align-items:center"><span>Selected Universe · <span id="universeCount">0</span> coins</span><span class="note">Tap to collapse / expand</span></summary>
-  <div class="stats" style="margin:10px 0"><span>Eligible after USDT volume filter: <b id="eligibleUniverseCount">0</b></span><span>Selection: <b id="universeRule">Top 10 / Bottom 10 · 24H change</b></span><span>Minimum 24H USDT quote volume: <b id="universeVolumeRule">2,000,000 USDT</b></span></div>
+  <div class="stats" style="margin:10px 0"><span>Eligible after USDT volume filter: <b id="eligibleUniverseCount">0</b></span><span>Selection: <b id="universeRule">Gainers ≥ +10% · Losers ≤ −10% (24H)</b></span><span>Minimum 24H USDT quote volume: <b id="universeVolumeRule">2,000,000 USDT</b></span></div>
   <div class="wrap"><table><thead><tr><th>#</th><th>SIDE</th><th>SYMBOL</th><th>24H CHANGE</th><th>24H QUOTE VOL (USDT)</th></tr></thead><tbody id="universeRows"><tr><td colspan="5" class="muted">Universe will appear when scanning starts.</td></tr></tbody></table></div>
-  <p class="note">The scan universe is built from the strongest and weakest 24H price performers among active Binance USDⓈ-M USDT-margined contracts, including crypto and TradFi. USDC-margined contracts are excluded. A symbol is included only once.</p>
+  <p class="note">In 24hr Price % Change mode, the universe includes every eligible contract with a 24H gain at or above the threshold and every eligible contract with a 24H loss at or below the negative threshold. Gainer and loser counts can differ. Top X / Bottom X mode instead selects a fixed number from each end of the 24H price-change ranking.</p>
  </details>
 </section>
 <section class="panel">
@@ -168,10 +168,9 @@ async function runScan(){
   const ranked=[...eligible].sort((a,b)=>b.change-a.change);
   const rawSize=Math.max(1,Math.floor(Number($('universeSize').value)||10));
   const mode=$('universeMode').value;
-  const requested=mode==='percent'?Math.ceil(eligibleCount*Math.min(100,rawSize)/100):rawSize;
-  const sideCount=Math.min(requested,Math.floor(eligibleCount/2));
-  const top=ranked.slice(0,sideCount).map(x=>({...x,side:'TOP'}));
-  const bottom=ranked.slice(Math.max(0,ranked.length-sideCount)).map(x=>({...x,side:'BOTTOM'}));
+  const sideCount=Math.min(rawSize,Math.floor(eligibleCount/2));
+  const top=mode==='percent'?ranked.filter(x=>x.change>=rawSize).map(x=>({...x,side:'TOP'})):ranked.slice(0,sideCount).map(x=>({...x,side:'TOP'}));
+  const bottom=mode==='percent'?ranked.filter(x=>x.change<=-rawSize).map(x=>({...x,side:'BOTTOM'})):ranked.slice(Math.max(0,ranked.length-sideCount)).map(x=>({...x,side:'BOTTOM'}));
   const selectedMap=new Map();
   top.forEach(x=>selectedMap.set(x.symbol,x));
   bottom.forEach(x=>{if(!selectedMap.has(x.symbol))selectedMap.set(x.symbol,x)});
@@ -179,7 +178,7 @@ async function runScan(){
   $('universeCount').textContent=universe.length;
   $('eligibleUniverseCount').textContent=eligibleCount;
   $('universeVolumeRule').textContent=fmt(minVol)+' USDT';
-  $('universeRule').textContent=(mode==='percent'?'Top '+rawSize+'% / Bottom '+rawSize+'%':'Top '+sideCount+' / Bottom '+sideCount)+' · 24H change';
+  $('universeRule').textContent=mode==='percent'?'Gainers ≥ +'+fmt(rawSize)+'% · Losers ≤ −'+fmt(rawSize)+'% (24H)':'Top '+sideCount+' / Bottom '+sideCount+' · 24H price change';
   $('universeRows').innerHTML=universe.length?universe.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+x.side+'</b></td><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="5" class="muted">Not enough eligible coins to build a top-and-bottom universe.</td></tr>';
    const period=Math.max(2,Math.min(100,Number($('period').value)||14));
   const workers=Math.max(1,Math.min(20,Number($('workers').value)||8));
