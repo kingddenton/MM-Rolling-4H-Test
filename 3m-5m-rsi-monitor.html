@@ -269,7 +269,7 @@ async function runScan(){
   const buyMin=Math.max(0,Math.min(100,Number($('buyRsiMin').value)||0));
   const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
   const required=Math.max(1,Math.min(100,Number($('macdCandles').value)||5));
-  const buys=newestFirst(good.filter(x=>x.buyState&&x.buyState.qualifies),alertFirstSeen.buys);
+  const buys=newestFirst(good.filter(x=>x.buyState&&x.buyState.qualifies),alertFirstSeen.buys).slice(0,10);
   $('buyMatches').textContent=buys.length;
   $('buySummary').textContent='3M RSI '+fmt(buyMin)+'–'+fmt(buyMax)+' · enter range after bullish MACD cross and remain in range · '+required+' candles';
   $('buyRows').innerHTML=buys.length?buys.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>3M</td><td>'+pill(x.buyRsi)+'</td><td><span class="pill low">'+x.buyState.age+'/'+required+'</span></td></tr>').join(''):'<tr><td colspan="5" class="muted">No active potential buy setups.</td></tr>';
