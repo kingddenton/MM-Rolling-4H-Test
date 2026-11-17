@@ -67,13 +67,13 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 <section class="panel">
  <div class="top"><b>Potential buy setups · RSI + MACD</b><span class="note">RSI must enter its range after a bullish MACD cross and remain there</span></div>
  <div class="stats" style="margin:8px 0"><span>Qualified setups: <b id="buyMatches">0</b></span><span>Rule: <b id="buySummary">3M RSI 58–63 · MACD green · expires after 5 candles</b></span></div>
- <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>TIMEFRAME</th><th>RSI</th><th>DIF</th><th>DEA</th><th>QUALIFICATION CANDLES</th></tr></thead><tbody id="buyRows"><tr><td colspan="7" class="muted">No potential buy setups yet.</td></tr></tbody></table></div>
+ <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>TIMEFRAME</th><th>RSI</th><th>DIF</th><th>QUALIFICATION CANDLES</th></tr></thead><tbody id="buyRows"><tr><td colspan="7" class="muted">No potential buy setups yet.</td></tr></tbody></table></div>
  <p class="note">A bullish 3-minute DIF/DEA crossover starts the editable candle window. The RSI must enter the editable range within that window while MACD is green. Once qualified, RSI must remain inside the range and MACD must remain green through the current candle; otherwise the setup is disqualified. The display shows the candle number since the crossover (for example, 4/10). Standard MACD 12, 26, 9. This is a screening condition, not a trade instruction.</p>
 </section>
 <section class="panel">
  <div class="top"><b>Potential sell setups · RSI + MACD</b><span class="note">RSI must enter its range after a bearish MACD cross and remain there</span></div>
  <div class="stats" style="margin:8px 0"><span>Qualified setups: <b id="sellMatches">0</b></span><span>Rule: <b id="sellSummary">3M RSI 33–42 · MACD red · expires after 5 candles</b></span></div>
- <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>TIMEFRAME</th><th>RSI</th><th>DIF</th><th>DEA</th><th>QUALIFICATION CANDLES</th></tr></thead><tbody id="sellRows"><tr><td colspan="7" class="muted">No potential sell setups yet.</td></tr></tbody></table></div>
+ <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>TIMEFRAME</th><th>RSI</th><th>DIF</th><th>QUALIFICATION CANDLES</th></tr></thead><tbody id="sellRows"><tr><td colspan="7" class="muted">No potential sell setups yet.</td></tr></tbody></table></div>
  <p class="note">A bearish 3-minute DIF/DEA crossover starts the editable sell candle window. RSI must enter the editable sell range within that window while MACD is red (DIF below DEA). Once qualified, RSI must remain inside the range and MACD must remain red through the current completed candle; otherwise the setup is disqualified. The sell alert uses the same selected universe as the buy alert. Standard MACD 12, 26, 9. This is a screening condition, not a trade instruction.</p>
 </section>
 </div>
@@ -250,14 +250,14 @@ async function runScan(){
   const buys=good.filter(x=>x.buyState&&x.buyState.qualifies).sort((a,b)=>a.buyState.age-b.buyState.age||b.macd.dif-a.macd.dif);
   $('buyMatches').textContent=buys.length;
   $('buySummary').textContent='3M RSI '+fmt(buyMin)+'–'+fmt(buyMax)+' · enter range after bullish MACD cross and remain in range · '+required+' candles';
-  $('buyRows').innerHTML=buys.length?buys.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>3M</td><td>'+pill(x.buyRsi)+'</td><td>'+x.macd.dif.toPrecision(6)+'</td><td>'+x.macd.dea.toPrecision(6)+'</td><td><span class="pill low">'+x.buyState.age+'/'+required+'</span></td></tr>').join(''):'<tr><td colspan="7" class="muted">No active potential buy setups.</td></tr>';
+  $('buyRows').innerHTML=buys.length?buys.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>3M</td><td>'+pill(x.buyRsi)+'</td><td>'+x.macd.dif.toPrecision(6)+'</td><td><span class="pill low">'+x.buyState.age+'/'+required+'</span></td></tr>').join(''):'<tr><td colspan="7" class="muted">No active potential buy setups.</td></tr>';
   const sellMin=Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33));
   const sellMax=Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42));
   const sellRequired=Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5));
   const sells=good.filter(x=>x.sellState&&x.sellState.qualifies).sort((a,b)=>a.sellState.age-b.sellState.age||a.macd.dif-b.macd.dif);
   $('sellMatches').textContent=sells.length;
   $('sellSummary').textContent='3M RSI '+fmt(sellMin)+'–'+fmt(sellMax)+' · enter range after bearish MACD cross and remain in range · '+sellRequired+' candles';
-  $('sellRows').innerHTML=sells.length?sells.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>3M</td><td>'+pill(x.buyRsi)+'</td><td>'+x.macd.dif.toPrecision(6)+'</td><td>'+x.macd.dea.toPrecision(6)+'</td><td><span class="pill high">'+x.sellState.age+'/'+sellRequired+'</span></td></tr>').join(''):'<tr><td colspan="7" class="muted">No active potential sell setups.</td></tr>';
+  $('sellRows').innerHTML=sells.length?sells.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>3M</td><td>'+pill(x.buyRsi)+'</td><td>'+x.macd.dif.toPrecision(6)+'</td><td><span class="pill high">'+x.sellState.age+'/'+sellRequired+'</span></td></tr>').join(''):'<tr><td colspan="7" class="muted">No active potential sell setups.</td></tr>';
   const negativeMacdAlerts=good.filter(x=>x.r5>=70&&x.macd5&&x.macd5.hist<0).sort((a,b)=>b.r5-a.r5);
   $('negativeMacdMatches').textContent=negativeMacdAlerts.length;
   $('negativeMacdRows').innerHTML=negativeMacdAlerts.length?negativeMacdAlerts.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+pill(x.r5)+'</td><td>'+x.macd5.dif.toPrecision(6)+'</td><td>'+x.macd5.dea.toPrecision(6)+'</td><td class="error">'+x.macd5.hist.toPrecision(6)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">No coins currently meet 5M RSI ≥70 with a negative MACD histogram.</td></tr>';
