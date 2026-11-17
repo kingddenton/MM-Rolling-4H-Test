@@ -46,7 +46,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
   <div class="field"><label for="refresh">AUTO REFRESH</label><select id="refresh"><option value="0">Off</option><option value="30">Every 30 seconds</option><option value="60" selected>Every 60 seconds</option><option value="120">Every 2 minutes</option><option value="300">Every 5 minutes</option></select></div>
   <div class="field"><label for="continuous">SCANNING MODE</label><select id="continuous"><option value="on" selected>Continuous scanning</option><option value="off">Scan once and stop</option></select></div>
  </div>
- <div class="actions"><button id="start">Start scanning</button><button id="once" class="secondary">Scan once</button><button id="stop" class="stop">Stop</button></div>
+ <div class="actions"><button id="start">Start scanning</button><button id="once" class="secondary">Scan once</button><button id="stop" class="stop">Stop</button><button id="saveSettings" class="secondary">Save settings</button></div>
  <div class="status" id="status">Ready. Configure the scanner and select Start scanning.</div>
  <div class="stats" style="margin-top:9px"><span>Eligible pairs: <b id="eligible">—</b></span><span>Scanned: <b id="scanned">0</b></span><span>Last scan: <b id="last">—</b></span></div>
 </section>
@@ -87,6 +87,23 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 (()=>{'use strict';
 const API='https://fapi.binance.com';
 const $=id=>document.getElementById(id);
+const SETTINGS_KEY='rsi-monitor-settings-v1';
+const settingIds=['universeMode','universeSize','volume','period','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','workers','refresh','continuous'];
+function loadSettings(){
+ try{
+  const saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
+  if(!saved||typeof saved!=='object')return;
+  settingIds.forEach(id=>{if(saved[id]!==undefined&&$(id))$(id).value=String(saved[id])});
+ }catch(e){/* Keep the page usable when browser storage is unavailable. */}
+}
+function saveSettings(){
+ try{
+  const saved={};settingIds.forEach(id=>{if($(id))saved[id]=$(id).value});
+  localStorage.setItem(SETTINGS_KEY,JSON.stringify(saved));
+  setStatus('Settings saved on this device/browser. They will be restored next time you open this page.');
+ }catch(e){setStatus('Could not save settings. Check whether browser storage is available.',true)}
+}
+loadSettings();
 let running=false,loopTimer=null,scanBusy=false,stopRequested=false;
 
 const fmt=n=>Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
@@ -266,6 +283,7 @@ async function runScan(){
  finally{scanBusy=false;if(running&&!stopRequested){if($('continuous').value==='on'){const sec=Number($('refresh').value);loopTimer=setTimeout(runScan,(sec>0?sec:60)*1000)}else{running=false;setRunningButton(false);setStatus('Single scan complete. Select Continuous scanning to keep the monitor running.')}}}
 }
 function pill(v){const cls=v<30?'low':v>70?'high':'mid';return '<span class="pill '+cls+'">'+fmt(v)+'</span>'}
+$('saveSettings').addEventListener('click',saveSettings);
 $('start').addEventListener('click',()=>{if(running)return;running=true;stopRequested=false;setRunningButton(true);clearTimeout(loopTimer);runScan()});
 $('once').addEventListener('click',()=>{if(running){setStatus('Stop automatic scanning before using Scan once.');return}stopRequested=false;runScan()});
 $('stop').addEventListener('click',()=>{running=false;stopRequested=true;setRunningButton(false);clearTimeout(loopTimer);setStatus(scanBusy?'Stop requested; finishing current requests…':'Scanner stopped.')});
