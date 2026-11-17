@@ -34,7 +34,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
   <div class="field"><label for="buyTf">POTENTIAL BUY TIMEFRAME</label><select id="buyTf"><option value="3m" selected>3 minutes</option><option value="5m">5 minutes</option></select></div>
   <div class="field"><label for="buyRsiMin">BUY RSI MINIMUM</label><input id="buyRsiMin" type="number" min="0" max="100" step="1" value="58"></div>
   <div class="field"><label for="buyRsiMax">BUY RSI MAXIMUM</label><input id="buyRsiMax" type="number" min="0" max="100" step="1" value="63"></div>
-  <div class="field"><label for="macdCandles">MACD POSITIVE CONSECUTIVE CANDLES</label><input id="macdCandles" type="number" min="1" max="20" step="1" value="3"></div>
+  <div class="field"><label for="macdCandles">MACD CANDLE COUNT (REQUIRED)</label><input id="macdCandles" type="number" min="1" max="20" step="1" value="5"></div>
   <div class="field"><label for="workers">PARALLEL WORKERS</label><input id="workers" type="number" min="1" max="20" value="8"></div>
   <div class="field"><label for="refresh">AUTO REFRESH</label><select id="refresh"><option value="0">Off</option><option value="30">Every 30 seconds</option><option value="60" selected>Every 60 seconds</option><option value="120">Every 2 minutes</option><option value="300">Every 5 minutes</option></select></div>
   <div class="field"><label for="continuous">SCANNING MODE</label><select id="continuous"><option value="on" selected>Continuous scanning</option><option value="off">Scan once and stop</option></select></div>
@@ -50,7 +50,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 </section>
 <section class="panel">
  <div class="top"><b>Potential buy setups · RSI + MACD</b><span class="note">Same selected timeframe for RSI and MACD</span></div>
- <div class="stats" style="margin:8px 0"><span>Qualified setups: <b id="buyMatches">0</b></span><span>Rule: <b id="buySummary">3M RSI 58–63 · MACD bullish for 3 candles</b></span></div>
+ <div class="stats" style="margin:8px 0"><span>Qualified setups: <b id="buyMatches">0</b></span><span>Rule: <b id="buySummary">3M RSI 58–63 · MACD bullish for 5 candles</b></span></div>
  <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>TIMEFRAME</th><th>RSI</th><th>DIF</th><th>DEA</th><th>MACD CANDLES</th></tr></thead><tbody id="buyRows"><tr><td colspan="7" class="muted">No potential buy setups yet.</td></tr></tbody></table></div>
  <p class="note">Bullish MACD requires DIF above zero and DIF above DEA for the configured number of consecutive candles. Standard MACD 12, 26, 9. This is a screening condition, not a trade instruction.</p>
 </section>
@@ -116,7 +116,7 @@ async function runScan(){
    const closes=klines.map(k=>k.map(x=>Number(x[4])));
    const [c3,c5,c15,c1h,c4h]=closes;
    const buyTf=$('buyTf').value,buyCloses=buyTf==='3m'?c3:c5;
-   const required=Math.max(1,Math.min(20,Number($('macdCandles').value)||3));
+   const required=Math.max(1,Math.min(20,Number($('macdCandles').value)||5));
    return {...item,r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
   });
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
@@ -126,7 +126,7 @@ async function runScan(){
   $('rows').innerHTML=matches.length?matches.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td><td>'+pill(x.r3)+'</td><td>'+pill(x.r5)+'</td><td>'+pill(x.r15)+'</td><td>'+pill(x.r1h)+'</td><td>'+pill(x.r4h)+'</td><td>'+new Date().toLocaleTimeString()+'</td></tr>').join(''):'<tr><td colspan="9" class="muted">No coins currently meet both RSI thresholds.</td></tr>';
   const buyMin=Math.max(0,Math.min(100,Number($('buyRsiMin').value)||0));
   const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
-  const buyTf=$('buyTf').value,required=Math.max(1,Math.min(20,Number($('macdCandles').value)||3));
+  const buyTf=$('buyTf').value,required=Math.max(1,Math.min(20,Number($('macdCandles').value)||5));
   const buys=good.filter(x=>x.buyRsi>=buyMin&&x.buyRsi<=buyMax&&x.macd&&x.macd.bull).sort((a,b)=>b.macd.dif-a.macd.dif);
   $('buyMatches').textContent=buys.length;
   $('buySummary').textContent=buyTf.toUpperCase()+' RSI '+fmt(buyMin)+'–'+fmt(buyMax)+' · MACD bullish for '+required+' consecutive candles';
