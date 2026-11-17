@@ -33,7 +33,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
   <div class="field"><label for="min5">MINIMUM 5M RSI (≥)</label><input id="min5" type="number" min="0" max="100" step="1" value="50"></div>
   <div class="field"><label for="buyRsiMin">BUY RSI MINIMUM</label><input id="buyRsiMin" type="number" min="0" max="100" step="1" value="60"></div>
   <div class="field"><label for="buyRsiMax">BUY RSI MAXIMUM</label><input id="buyRsiMax" type="number" min="0" max="100" step="1" value="72"></div>
-  <div class="field"><label for="macdCandles">QUALIFICATION CANDLE COUNT</label><input id="macdCandles" type="number" min="1" max="20" step="1" value="5"></div>
+  <div class="field"><label for="macdCandles">QUALIFICATION CANDLE COUNT</label><input id="macdCandles" type="number" min="1" max="100" step="1" value="5"></div>
   <div class="field"><label for="workers">PARALLEL WORKERS</label><input id="workers" type="number" min="1" max="20" value="8"></div>
   <div class="field"><label for="refresh">AUTO REFRESH</label><select id="refresh"><option value="0">Off</option><option value="30">Every 30 seconds</option><option value="60" selected>Every 60 seconds</option><option value="120">Every 2 minutes</option><option value="300">Every 5 minutes</option></select></div>
   <div class="field"><label for="continuous">SCANNING MODE</label><select id="continuous"><option value="on" selected>Continuous scanning</option><option value="off">Scan once and stop</option></select></div>
@@ -112,10 +112,10 @@ function potentialBuyState(closes,period,minRsi,maxRsi,window){
   if(dif[i]<dea[i]&&dif[i-1]>=dea[i-1]){crossIndex=i;crossType='down';break}
  }
  if(crossType!=='up')return {qualifies:false,age:0};
- const age=closes.length-crossIndex;
+ const age=closes.length-crossIndex-1;
  if(age<1||age>window)return {qualifies:false,age};
  let qualified=false;
- for(let i=crossIndex;i<closes.length;i++){
+ for(let i=crossIndex+1;i<closes.length;i++){
   const green=dif[i]>dea[i];
   const inRange=Number.isFinite(rsi[i])&&rsi[i]>=minRsi&&rsi[i]<=maxRsi;
   if(!qualified){
@@ -167,7 +167,7 @@ async function runScan(){
    const closes=klines.map(k=>k.slice(0,-1).map(x=>Number(x[4]))); // Exclude Binance's still-forming candle: all indicators use closed candles only.
    const [c3,c5,c15,c1h,c4h]=closes;
    const buyCloses=c3;
-   const required=Math.max(1,Math.min(20,Number($('macdCandles').value)||5));
+   const required=Math.max(1,Math.min(100,Number($('macdCandles').value)||5));
    const buyMin=Math.max(0,Math.min(100,Number($('buyRsiMin').value)||0));
    const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
    return {...item,r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),buyState:potentialBuyState(buyCloses,period,buyMin,buyMax,required),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
@@ -179,7 +179,7 @@ async function runScan(){
   $('rows').innerHTML=matches.length?matches.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td><td>'+pill(x.r3)+'</td><td>'+pill(x.r5)+'</td><td>'+pill(x.r15)+'</td><td>'+pill(x.r1h)+'</td><td>'+pill(x.r4h)+'</td><td>'+new Date().toLocaleTimeString()+'</td></tr>').join(''):'<tr><td colspan="9" class="muted">No coins currently meet both RSI thresholds.</td></tr>';
   const buyMin=Math.max(0,Math.min(100,Number($('buyRsiMin').value)||0));
   const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
-  const required=Math.max(1,Math.min(20,Number($('macdCandles').value)||5));
+  const required=Math.max(1,Math.min(100,Number($('macdCandles').value)||5));
   const buys=good.filter(x=>x.buyState&&x.buyState.qualifies).sort((a,b)=>a.buyState.age-b.buyState.age||b.macd.dif-a.macd.dif);
   $('buyMatches').textContent=buys.length;
   $('buySummary').textContent='3M RSI '+fmt(buyMin)+'–'+fmt(buyMax)+' · enter range after bullish MACD cross and remain in range · '+required+' candles';
