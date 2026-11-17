@@ -212,6 +212,14 @@ async function mapLimit(items,limit,fn){
  async function worker(){while(!stopRequested){const i=next++;if(i>=items.length)return;try{out[i]=await fn(items[i]);}catch(e){out[i]={error:e.message,symbol:items[i].symbol}}done++;$('scanned').textContent=done}}
  await Promise.all(Array.from({length:Math.min(limit,items.length)},worker));return out;
 }
+const alertFirstSeen={matches:new Map(),buys:new Map(),sells:new Map(),negativeMacd:new Map()};
+let alertSequence=0;
+function newestFirst(items,tracker){
+ const active=new Set(items.map(x=>x.symbol));
+ for(const x of items){if(!tracker.has(x.symbol))tracker.set(x.symbol,{time:Date.now(),sequence:++alertSequence})}
+ for(const symbol of tracker.keys()){if(!active.has(symbol))tracker.delete(symbol)}
+ return [...items].sort((a,b)=>tracker.get(b.symbol).time-tracker.get(a.symbol).time||tracker.get(b.symbol).sequence-tracker.get(a.symbol).sequence);
+}
 async function runScan(){
  if(scanBusy)return;scanBusy=true;stopRequested=false;setRunningButton(running);$('scanned').textContent='0';
  try{
@@ -255,25 +263,24 @@ async function runScan(){
    return {...item,r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),buyState:potentialBuyState(buyCloses,period,buyMin,buyMax,required),sellState:potentialSellState(buyCloses,period,Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33)),Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42)),Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5))),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
   });
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
-  const matches=good.filter(x=>x.r3>=min3&&x.r5>=min5);
-  matches.sort((a,b)=>(b.r3+b.r5)-(a.r3+a.r5));
+  const matches=newestFirst(good.filter(x=>x.r3>=min3&&x.r5>=min5),alertFirstSeen.matches);
   $('matches').textContent=matches.length;
   $('rows').innerHTML=matches.length?matches.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td><td>'+pill(x.r3)+'</td><td>'+pill(x.r5)+'</td><td>'+pill(x.r15)+'</td><td>'+pill(x.r1h)+'</td><td>'+pill(x.r4h)+'</td><td>'+new Date().toLocaleTimeString()+'</td></tr>').join(''):'<tr><td colspan="9" class="muted">No coins currently meet both RSI thresholds.</td></tr>';
   const buyMin=Math.max(0,Math.min(100,Number($('buyRsiMin').value)||0));
   const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
   const required=Math.max(1,Math.min(100,Number($('macdCandles').value)||5));
-  const buys=good.filter(x=>x.buyState&&x.buyState.qualifies).sort((a,b)=>a.buyState.age-b.buyState.age||b.macd.dif-a.macd.dif);
+  const buys=newestFirst(good.filter(x=>x.buyState&&x.buyState.qualifies),alertFirstSeen.buys);
   $('buyMatches').textContent=buys.length;
   $('buySummary').textContent='3M RSI '+fmt(buyMin)+'–'+fmt(buyMax)+' · enter range after bullish MACD cross and remain in range · '+required+' candles';
   $('buyRows').innerHTML=buys.length?buys.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>3M</td><td>'+pill(x.buyRsi)+'</td><td><span class="pill low">'+x.buyState.age+'/'+required+'</span></td></tr>').join(''):'<tr><td colspan="5" class="muted">No active potential buy setups.</td></tr>';
   const sellMin=Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33));
   const sellMax=Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42));
   const sellRequired=Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5));
-  const sells=good.filter(x=>x.sellState&&x.sellState.qualifies).sort((a,b)=>a.sellState.age-b.sellState.age||a.macd.dif-b.macd.dif);
+  const sells=newestFirst(good.filter(x=>x.sellState&&x.sellState.qualifies),alertFirstSeen.sells);
   $('sellMatches').textContent=sells.length;
   $('sellSummary').textContent='3M RSI '+fmt(sellMin)+'–'+fmt(sellMax)+' · enter range after bearish MACD cross and remain in range · '+sellRequired+' candles';
   $('sellRows').innerHTML=sells.length?sells.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>3M</td><td>'+pill(x.buyRsi)+'</td><td><span class="pill high">'+x.sellState.age+'/'+sellRequired+'</span></td></tr>').join(''):'<tr><td colspan="5" class="muted">No active potential sell setups.</td></tr>';
-  const negativeMacdAlerts=good.filter(x=>x.r5>=70&&x.macd5&&x.macd5.hist<0).sort((a,b)=>b.r5-a.r5);
+  const negativeMacdAlerts=newestFirst(good.filter(x=>x.r5>=70&&x.macd5&&x.macd5.hist<0),alertFirstSeen.negativeMacd);
   $('negativeMacdMatches').textContent=negativeMacdAlerts.length;
   $('negativeMacdRows').innerHTML=negativeMacdAlerts.length?negativeMacdAlerts.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+pill(x.r5)+'</td><td class="error">'+x.macd5.hist.toPrecision(6)+'</td></tr>').join(''):'<tr><td colspan="4" class="muted">No coins currently meet 5M RSI ≥70 with a negative MACD histogram.</td></tr>';
   $('last').textContent=new Date().toLocaleTimeString();
