@@ -157,9 +157,12 @@ function potentialSellState(closes,period,minRsi,maxRsi,window){
  const value=()=>avgL===0?(avgG===0?50:100):avgG===0?0:100-100/(1+avgG/avgL);
  rsi[period]=value();
  for(let i=period+1;i<closes.length;i++){const d=closes[i]-closes[i-1];avgG=(avgG*(period-1)+Math.max(d,0))/period;avgL=(avgL*(period-1)+Math.max(-d,0))/period;rsi[i]=value()}
- let crossIndex=-1;
- for(let i=dif.length-1;i>=1;i--){if(dif[i]<dea[i]&&dif[i-1]>=dea[i-1]){crossIndex=i;break}}
- if(crossIndex<0)return {qualifies:false,age:0};
+ let crossIndex=-1,crossType='';
+ for(let i=dif.length-1;i>=1;i--){
+  if(dif[i]>dea[i]&&dif[i-1]<=dea[i-1]){crossIndex=i;crossType='up';break}
+  if(dif[i]<dea[i]&&dif[i-1]>=dea[i-1]){crossIndex=i;crossType='down';break}
+ }
+ if(crossType!=='down')return {qualifies:false,age:0};
  const age=closes.length-crossIndex-1;
  if(age<1||age>window)return {qualifies:false,age};
  let qualified=false;
