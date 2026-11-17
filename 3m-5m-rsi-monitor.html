@@ -169,7 +169,8 @@ async function runScan(){
    const buyCloses=c3;
    const required=Math.max(1,Math.min(20,Number($('macdCandles').value)||5));
    const buyMin=Math.max(0,Math.min(100,Number($('buyRsiMin').value)||0));
-   const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));\n   return {...item,r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),buyState:potentialBuyState(buyCloses,period,buyMin,buyMax,required),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
+   const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
+   return {...item,r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),buyState:potentialBuyState(buyCloses,period,buyMin,buyMax,required),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
   });
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
   const matches=good.filter(x=>x.r3>=min3&&x.r5>=min5);
