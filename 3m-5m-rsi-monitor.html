@@ -43,6 +43,12 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <div class="stats" style="margin-top:9px"><span>Eligible pairs: <b id="eligible">—</b></span><span>Scanned: <b id="scanned">0</b></span><span>Last scan: <b id="last">—</b></span></div>
 </section>
 <section class="panel">
+ <div class="top"><b>Scanning universe · all selected coins</b><span class="note">The exact symbols being scanned in this cycle</span></div>
+ <div class="stats" style="margin:8px 0"><span>Coins in scan: <b id="universeCount">0</b></span><span>Eligible after volume filter: <b id="eligibleUniverseCount">0</b></span><span>Minimum 24H quote volume: <b id="universeVolumeRule">2,000,000 USDT</b></span></div>
+ <div class="wrap"><table><thead><tr><th>#</th><th>SYMBOL</th><th>24H CHANGE</th><th>24H QUOTE VOL (USDT)</th></tr></thead><tbody id="universeRows"><tr><td colspan="4" class="muted">Universe will appear when scanning starts.</td></tr></tbody></table></div>
+ <p class="note">This list is the actual scan list after applying the selected Top 50/100/200/All option and minimum 24H quote-volume filter.</p>
+</section>
+<section class="panel">
  <div class="top"><b>RSI filter matches</b><span class="note">Both conditions must pass: 3M RSI ≥ threshold AND 5M RSI ≥ threshold</span></div>
  <div class="stats" style="margin:8px 0"><span>Matching coins: <b id="matches">0</b></span><span>Filter: <b id="filterSummary">3M ≥ 70 · 5M ≥ 50</b></span></div>
  <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>24H QUOTE VOL</th><th>3M RSI</th><th>5M RSI</th><th>15M RSI</th><th>1H RSI</th><th>4H RSI</th><th>UPDATED</th></tr></thead><tbody id="rows"><tr><td colspan="9" class="muted">No scan results yet.</td></tr></tbody></table></div>
@@ -154,8 +160,13 @@ async function runScan(){
   const minVol=Math.max(0,Number($('volume').value)||0);
   let universe=info.symbols.filter(s=>s.status==='TRADING'&&s.contractType==='PERPETUAL'&&s.quoteAsset==='USDT').map(s=>{const t=tickerMap.get(s.symbol);return t?{symbol:s.symbol,volume:Number(t.quoteVolume)||0,change:Number(t.priceChangePercent)||0}:null}).filter(x=>x&&x.volume>=minVol).sort((a,b)=>b.volume-a.volume);
   $('eligible').textContent=universe.length;
-  const choice=$('universe').value;if(choice!=='all')universe=universe.slice(0,Number(choice));
-  const period=Math.max(2,Math.min(100,Number($('period').value)||14));
+   const eligibleCount=universe.length;
+   const choice=$('universe').value;if(choice!=='all')universe=universe.slice(0,Number(choice));
+   $('universeCount').textContent=universe.length;
+   $('eligibleUniverseCount').textContent=eligibleCount;
+   $('universeVolumeRule').textContent=fmt(minVol)+' USDT';
+   $('universeRows').innerHTML=universe.length?universe.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="4" class="muted">No eligible coins match the current volume filter.</td></tr>';
+   const period=Math.max(2,Math.min(100,Number($('period').value)||14));
   const workers=Math.max(1,Math.min(20,Number($('workers').value)||8));
   const min3=Math.max(0,Math.min(100,Number($('min3').value)||0));
   const min5=Math.max(0,Math.min(100,Number($('min5').value)||0));
