@@ -363,9 +363,9 @@ async function runScan(){
   $('filterSummary').textContent='3M ≥ '+fmt(min3)+' · 5M ≥ '+fmt(min5);
   setStatus('Scanning '+universe.length+' USDT-margined USDⓈ-M contracts · Potential Buy/Sell timeframe: '+scannerTf.toUpperCase()+' · RSI comparison: 3m + 5m…');
   const intervals=['1m','3m','5m','15m','1h','4h'];
-  const jobs=universe.flatMap(item=>intervals.map(tf=>({symbol:item.symbol,tf})));
-  performance.totalJobs=jobs.length;
-  const fetchedJobs=await mapLimit(jobs,workers,async job=>{
+  const timeframeJobs=universe.flatMap(item=>intervals.map(tf=>({symbol:item.symbol,tf})));
+  performance.totalJobs=timeframeJobs.length;
+  const fetchedJobs=await mapLimit(timeframeJobs,workers,async job=>{
    const key=job.symbol+' '+job.tf;
    performance.startedJobs++;
    performance.startedJobKeys.add(key);
