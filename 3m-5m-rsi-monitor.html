@@ -137,15 +137,14 @@ let requestConcurrency=8,activeRequests=0,requestWaiters=[],rateLimitUntil=0;
 const performance={restRequests:0,cacheHits:0,cacheMisses:0,activeWorkers:0,peakWorkers:0,history:[],last:null,coinTimes:new Map(),startedJobs:0,finishedJobs:0,checkedJobs:0,failures:0,startedJobKeys:new Set(),totalJobs:0,scanStarted:0,universeMs:0};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function acquireRequestSlot(){
- while(true){
-  while(Date.now()<rateLimitUntil)await sleep(Math.min(1000,rateLimitUntil-Date.now()));
-  if(activeRequests<requestConcurrency){activeRequests++;return}
-  await new Promise(resolve=>requestWaiters.push(resolve));
- }
+ while(Date.now()<rateLimitUntil)await sleep(Math.min(1000,rateLimitUntil-Date.now()));
+ if(activeRequests<requestConcurrency){activeRequests++;return}
+ // A released slot is handed directly to this waiter; do not re-check the limit.
+ await new Promise(resolve=>requestWaiters.push(resolve));
 }
 function releaseRequestSlot(){
+ if(requestWaiters.length){requestWaiters.shift()();return}
  activeRequests--;
- if(requestWaiters.length){activeRequests++;requestWaiters.shift()();}
 }
 const fmt=n=>Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
 function setStatus(s,err=false){$('status').textContent=s;$('status').className='status'+(err?' error':'')}
@@ -268,8 +267,10 @@ function macdCrossoverAge(closes){
 async function getJson(url){
  performance.restRequests++;
  await acquireRequestSlot();
+ const controller=new AbortController();
+ const requestTimeout=setTimeout(()=>controller.abort(),20000);
  try{
-  const r=await fetch(url,{cache:'no-store'});
+  const r=await fetch(url,{cache:'no-store',signal:controller.signal});
   if(!r.ok){
    if(r.status===418||r.status===429){
     const retry=Math.max(1,Number(r.headers.get('Retry-After'))||(r.status===418?120:60));
@@ -278,7 +279,13 @@ async function getJson(url){
    throw new Error('Binance HTTP '+r.status+(rateLimitUntil>Date.now()?' · cooldown '+Math.ceil((rateLimitUntil-Date.now())/1000)+'s':''));
   }
   return await r.json();
- }finally{releaseRequestSlot()}
+ }catch(e){
+  if(controller.signal.aborted)throw new Error('Binance request timed out after 20 seconds');
+  throw e;
+ }finally{
+  clearTimeout(requestTimeout);
+  releaseRequestSlot();
+ }
 }
 async function getCachedKlines(symbol,tf){
  const key=symbol+'|'+tf,cached=candleCache.get(key);
