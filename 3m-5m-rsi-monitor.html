@@ -361,7 +361,8 @@ async function runScan(){
   const min3=Math.max(0,Math.min(100,Number($('min3').value)||0));
   const min5=Math.max(0,Math.min(100,Number($('min5').value)||0));
   $('filterSummary').textContent='3M ≥ '+fmt(min3)+' · 5M ≥ '+fmt(min5);
-  setStatus('Scanning '+universe.length+' USDT-margined USDⓈ-M cont  const intervals=['1m','3m','5m','15m','1h','4h'];
+  setStatus('Scanning '+universe.length+' USDT-margined USDⓈ-M contracts · Potential Buy/Sell timeframe: '+scannerTf.toUpperCase()+' · RSI comparison: 3m + 5m…');
+  const intervals=['1m','3m','5m','15m','1h','4h'];
   const jobs=universe.flatMap(item=>intervals.map(tf=>({symbol:item.symbol,tf})));
   performance.totalJobs=jobs.length;
   const fetchedJobs=await mapLimit(jobs,workers,async job=>{
