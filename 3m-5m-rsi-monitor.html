@@ -111,7 +111,8 @@ function saveSettings(){
 }
 loadSettings();
 let running=false,loopTimer=null,scanBusy=false,stopRequested=false;
-const candleCache=new Map();\nconst perf={requests:0,hits:0,misses:0,active:0,peak:0,total:0,started:0,finished:0,failed:0,missing:[],errors:[],startedKeys:new Set(),startedAt:0};
+const candleCache=new Map();
+const perf={requests:0,hits:0,misses:0,active:0,peak:0,total:0,started:0,finished:0,failed:0,missing:[],errors:[],startedKeys:new Set(),startedAt:0};
 let rateLimitUntil=0;const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 const fmt=n=>Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
