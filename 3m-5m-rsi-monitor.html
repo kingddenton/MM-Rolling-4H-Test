@@ -299,9 +299,9 @@ async function getCachedKlines(symbol,tf){
  const updated=[...merged.values()].sort((a,b)=>Number(a[0])-Number(b[0])).slice(-100);
  candleCache.set(key,updated);return updated;
 }
-async function mapLimit(items,limit,fn){
+async function mapLimit(items,limit,fn,progressDivisor=1){
  let next=0,done=0;const out=new Array(items.length);
- async function worker(){while(!stopRequested){const i=next++;if(i>=items.length)return;const itemStarted=Date.now();performance.activeWorkers++;performance.peakWorkers=Math.max(performance.peakWorkers,performance.activeWorkers);try{out[i]=await fn(items[i]);}catch(e){out[i]={error:e.message,symbol:items[i].symbol}}finally{performance.coinTimes.set(items[i].symbol,Date.now()-itemStarted);performance.activeWorkers--}done++;$('scanned').textContent=done}}
+ async function worker(){while(!stopRequested){const i=next++;if(i>=items.length)return;const itemStarted=Date.now();performance.activeWorkers++;performance.peakWorkers=Math.max(performance.peakWorkers,performance.activeWorkers);try{out[i]=await fn(items[i]);}catch(e){out[i]={error:e.message,symbol:items[i].symbol}}finally{performance.coinTimes.set(items[i].symbol,Date.now()-itemStarted);performance.activeWorkers--}done++;$('scanned').textContent=Math.min(Math.ceil(items.length/progressDivisor),Math.floor(done/progressDivisor))}}
  await Promise.all(Array.from({length:Math.min(limit,items.length)},worker));return out;
 }
 function renderPerformance(){
@@ -361,11 +361,29 @@ async function runScan(){
   const min3=Math.max(0,Math.min(100,Number($('min3').value)||0));
   const min5=Math.max(0,Math.min(100,Number($('min5').value)||0));
   $('filterSummary').textContent='3M ≥ '+fmt(min3)+' · 5M ≥ '+fmt(min5);
-  setStatus('Scanning '+universe.length+' USDT-margined USDⓈ-M contracts · Potential Buy/Sell timeframe: '+scannerTf.toUpperCase()+' · RSI comparison: 3m + 5m…');
-  const results=await mapLimit(universe,workers,async item=>{
-   const intervals=['1m','3m','5m','15m','1h','4h'];
-   performance.totalJobs=universe.length*6;
-    const klines=await Promise.all(intervals.map(async tf=>{const key=item.symbol+' '+tf;performance.startedJobs++;performance.startedJobKeys.add(key);try{return await getCachedKlines(item.symbol,tf)}catch(error){performance.failures++;throw error}finally{performance.finishedJobs++;performance.checkedJobs++}}));
+  setStatus('Scanning '+universe.length+' USDT-margined USDⓈ-M cont  const intervals=['1m','3m','5m','15m','1h','4h'];
+  const jobs=universe.flatMap(item=>intervals.map(tf=>({symbol:item.symbol,tf})));
+  performance.totalJobs=jobs.length;
+  const fetchedJobs=await mapLimit(jobs,workers,async job=>{
+   const key=job.symbol+' '+job.tf;
+   performance.startedJobs++;
+   performance.startedJobKeys.add(key);
+   try{return {symbol:job.symbol,tf:job.tf,rows:await getCachedKlines(job.symbol,job.tf)}}
+   catch(error){performance.failures++;return {symbol:job.symbol,tf:job.tf,error:error.message}}
+   finally{performance.finishedJobs++;performance.checkedJobs++}
+  },6);
+  const candlesBySymbol=new Map(universe.map(item=>[item.symbol,{}]));
+  const errorsBySymbol=new Map();
+  for(const job of fetchedJobs){
+   if(!job)continue;
+   if(job.error){errorsBySymbol.set(job.symbol,job.error);continue}
+   const bucket=candlesBySymbol.get(job.symbol);
+   if(bucket)bucket[job.tf]=job.rows;
+  }
+  const results=universe.map(item=>{
+   const klines=intervals.map(tf=>candlesBySymbol.get(item.symbol)?.[tf]);
+   const fetchError=errorsBySymbol.get(item.symbol);
+   if(fetchError||klines.some(rows=>!rows||!rows.length))return {...item,error:fetchError||'Incomplete timeframe data'};
    const closes=Object.fromEntries(intervals.map((tf,i)=>[tf,klines[i].slice(0,-1).map(x=>Number(x[4]))])); // Exclude Binance's still-forming candle: all indicators use closed candles only.
    const c3=closes['3m'],c5=closes['5m'],c15=closes['15m'],c1h=closes['1h'],c4h=closes['4h'];
    const buyCloses=closes[scannerTf];
@@ -374,6 +392,7 @@ async function runScan(){
    const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
    return {...item,scannerTf,st15:supertrend15mDirection(klines[3].slice(0,-1)),r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),buyState:potentialBuyState(buyCloses,period,buyMin,buyMax,required),sellState:potentialSellState(buyCloses,period,Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33)),Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42)),Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5))),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
   });
+  $('scanned').textContent=String(universe.length);
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
   const matches=newestFirst(good.filter(x=>x.r3>=min3&&x.r5>=min5),alertFirstSeen.matches);
   $('matches').textContent=matches.length;
