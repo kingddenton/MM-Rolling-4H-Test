@@ -15,7 +15,7 @@ h1{font-size:22px;margin:0}.tag{font-size:11px;font-weight:800;letter-spacing:.0
 .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px}.field label{display:block;color:var(--muted);font-size:11px;margin-bottom:5px;font-weight:700}
 input,select,button{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;background:#0c1625;color:var(--text);font:inherit}
 .direction-filter{display:flex;align-items:center;gap:8px;margin:9px 0;color:var(--muted);font-size:12px;font-weight:650}
-.direction-filter input{width:16px;height:16px;margin:0;accent-color:var(--blue)}
+.oi-filter-field{border:1px solid var(--line);border-radius:8px;padding:9px}.oi-range{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}.oi-range input{min-width:0;width:100%;background:#0b1422;color:var(--text);border:1px solid var(--line);border-radius:7px;padding:7px}.oi-filter-field small{color:var(--muted);font-size:11px}.direction-filter input{width:16px;height:16px;margin:0;accent-color:var(--blue)}
 #universeDetails>summary{list-style:none}#universeDetails>summary::-webkit-details-marker{display:none}#universeDetails>summary:after{content:'＋';color:var(--blue);font-size:16px}#universeDetails[open]>summary:after{content:'−'}
 button{cursor:pointer;font-weight:750;background:#1d4ed8;border-color:#2563eb}button.running{background:#15803d;border-color:#22c55e;color:#fff;}button.secondary{background:#18283b;border-color:var(--line)}button.stop{background:#7f1d1d;border-color:#991b1b}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.actions button{width:auto;min-width:110px}
@@ -47,6 +47,9 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
   <div class="field"><label for="sellRsiMin">SELL RSI MINIMUM</label><input id="sellRsiMin" type="number" min="0" max="100" step="1" value="33"></div>
   <div class="field"><label for="sellRsiMax">SELL RSI MAXIMUM</label><input id="sellRsiMax" type="number" min="0" max="100" step="1" value="42"></div>
   <div class="field"><label for="sellMacdCandles">SELL QUALIFICATION CANDLES</label><input id="sellMacdCandles" type="number" min="1" max="100" step="1" value="5"></div>
+  <div class="field oi-filter-field"><label>1M OPEN INTEREST FILTER</label><label class="direction-filter"><input id="oi1Enabled" type="checkbox"> Enable 1M OI filter</label><div class="oi-range"><input id="oi1Min" type="number" step="0.1" value="0" aria-label="1 minute OI minimum percentage"><input id="oi1Max" type="number" step="0.1" value="100" aria-label="1 minute OI maximum percentage"></div><small>Minimum % / Maximum %</small></div>
+  <div class="field oi-filter-field"><label>3M OPEN INTEREST FILTER</label><label class="direction-filter"><input id="oi3Enabled" type="checkbox"> Enable 3M OI filter</label><div class="oi-range"><input id="oi3Min" type="number" step="0.1" value="0" aria-label="3 minute OI minimum percentage"><input id="oi3Max" type="number" step="0.1" value="100" aria-label="3 minute OI maximum percentage"></div><small>Minimum % / Maximum %</small></div>
+  <div class="field oi-filter-field"><label>5M OPEN INTEREST FILTER</label><label class="direction-filter"><input id="oi5Enabled" type="checkbox"> Enable 5M OI filter</label><div class="oi-range"><input id="oi5Min" type="number" step="0.1" value="0" aria-label="5 minute OI minimum percentage"><input id="oi5Max" type="number" step="0.1" value="100" aria-label="5 minute OI maximum percentage"></div><small>Minimum % / Maximum %</small></div>
   <div class="field"><label for="workers">PARALLEL WORKERS</label><input id="workers" type="number" min="1" max="20" value="8"></div>
   <div class="field"><label for="refresh">AUTO REFRESH</label><select id="refresh"><option value="0">Off</option><option value="30">Every 30 seconds</option><option value="60" selected>Every 60 seconds</option><option value="120">Every 2 minutes</option><option value="300">Every 5 minutes</option></select></div>
   <div class="field"><label for="continuous">SCANNING MODE</label><select id="continuous"><option value="on" selected>Continuous scanning</option><option value="off">Scan once and stop</option></select></div>
@@ -112,7 +115,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 const API='https://fapi.binance.com';
 const $=id=>document.getElementById(id);
 const SETTINGS_KEY='rsi-monitor-settings-v1';
-const settingIds=['universeMode','universeSize','topCount','bottomCount','volume','period','scannerTf','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','workers','refresh','continuous','buyPositive24h','sellNegative24h'];
+const settingIds=['universeMode','universeSize','topCount','bottomCount','volume','period','scannerTf','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','oi1Enabled','oi1Min','oi1Max','oi3Enabled','oi3Min','oi3Max','oi5Enabled','oi5Min','oi5Max','workers','refresh','continuous','buyPositive24h','sellNegative24h'];
 function loadSettings(){
  try{
   const saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
@@ -133,6 +136,7 @@ let running=false,loopTimer=null,scanBusy=false,stopRequested=false;
 // and cap all simultaneous Binance REST requests independently of coin-level workers.
 let exchangeInfoCache=null;
 const candleCache=new Map();
+const oiSamples=new Map();
 let requestConcurrency=8,activeRequests=0,requestWaiters=[],rateLimitUntil=0;
 const performance={restRequests:0,cacheHits:0,cacheMisses:0,activeWorkers:0,peakWorkers:0,history:[],last:null,coinTimes:new Map(),startedJobs:0,finishedJobs:0,checkedJobs:0,failures:0,startedJobKeys:new Set(),totalJobs:0,scanStarted:0,universeMs:0};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -395,24 +399,58 @@ async function runScan(){
   });
   $('scanned').textContent=String(universe.length);
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
-  const matches=newestFirst(good.filter(x=>x.r3>=min3&&x.r5>=min5),alertFirstSeen.matches);
+  const oiEnabled=[{tf:'1m',key:'oi1',window:60000},{tf:'3m',key:'oi3',window:180000},{tf:'5m',key:'oi5',window:300000}].filter(x=>$(x.key+'Enabled').checked);
+  const oiValues=oiEnabled.length?await mapLimit(universe,workers,async item=>{
+   try{return {symbol:item.symbol,value:Number((await getJson(API+'/fapi/v1/openInterest?symbol='+encodeURIComponent(item.symbol))).openInterest)}}
+   catch(error){return {symbol:item.symbol,error:error.message}}
+  }):[];
+  const oiNow=Date.now();
+  for(const item of oiValues){
+   if(!item||!Number.isFinite(item.value)||item.value<=0)continue;
+   const samples=oiSamples.get(item.symbol)||[];
+   samples.push({time:oiNow,value:item.value});
+   while(samples.length&&oiNow-samples[0].time>7*60000)samples.shift();
+   oiSamples.set(item.symbol,samples);
+  }
+  const oiSnapshotFor=(symbol,window)=>{
+   const samples=oiSamples.get(symbol)||[];
+   if(samples.length<2)return null;
+   const target=oiNow-window;
+   let ref=null,delta=Infinity;
+   for(const sample of samples){const d=Math.abs(sample.time-target);if(sample.time<oiNow&&d<delta){ref=sample;delta=d}}
+   if(!ref||delta>45000)return null;
+   const current=samples[samples.length-1].value;
+   return (current-ref.value)/ref.value*100;
+  };
+  for(const item of good){
+   item.oi1=oiSnapshotFor(item.symbol,60000);
+   item.oi3=oiSnapshotFor(item.symbol,180000);
+   item.oi5=oiSnapshotFor(item.symbol,300000);
+  }
+  const passesOiFilters=item=>oiEnabled.every(filter=>{
+   const value=item[filter.key];
+   const min=Number($(filter.key+'Min').value),max=Number($(filter.key+'Max').value);
+   return Number.isFinite(value)&&Number.isFinite(min)&&Number.isFinite(max)&&min<=max&&value>=min&&value<=max;
+  });
+  const oiFilteredGood=good.filter(passesOiFilters);
+  const matches=newestFirst(oiFilteredGood.filter(x=>x.r3>=min3&&x.r5>=min5),alertFirstSeen.matches);
   $('matches').textContent=matches.length;
   $('rows').innerHTML=matches.length?matches.map(x=>'<tr><td><b class="'+symbolStClass(x.st15)+'">'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td><td>'+pill(x.r3)+'</td><td>'+pill(x.r5)+'</td><td>'+pill(x.r15)+'</td><td>'+pill(x.r1h)+'</td><td>'+pill(x.r4h)+'</td><td>'+new Date().toLocaleTimeString()+'</td></tr>').join(''):'<tr><td colspan="9" class="muted">No coins currently meet both RSI thresholds.</td></tr>';
   const buyMin=Math.max(0,Math.min(100,Number($('buyRsiMin').value)||0));
   const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
   const required=Math.max(1,Math.min(100,Number($('macdCandles').value)||5));
-  const buys=newestFirst(good.filter(x=>x.buyState&&x.buyState.qualifies&&(!$('buyPositive24h').checked||x.change>0)),alertFirstSeen.buys).slice(0,10);
+  const buys=newestFirst(oiFilteredGood.filter(x=>x.buyState&&x.buyState.qualifies&&(!$('buyPositive24h').checked||x.change>0)),alertFirstSeen.buys).slice(0,10);
   $('buyMatches').textContent=buys.length;
   $('buySummary').textContent=scannerTf.toUpperCase()+' RSI '+fmt(buyMin)+'–'+fmt(buyMax)+' · enter range after bullish MACD cross and remain in range · '+required+' candles'+($('buyPositive24h').checked?' · positive 24H change only':'');
   $('buyRows').innerHTML=buys.length?buys.map(x=>'<tr><td><b class="'+symbolStClass(x.st15)+'">'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+x.scannerTf.toUpperCase()+'</td><td>'+pill(x.buyRsi)+'</td><td><span class="pill low">'+x.buyState.age+'/'+required+'</span></td></tr>').join(''):'<tr><td colspan="5" class="muted">No active potential buy setups.</td></tr>';
   const sellMin=Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33));
   const sellMax=Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42));
   const sellRequired=Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5));
-  const sells=newestFirst(good.filter(x=>x.sellState&&x.sellState.qualifies&&(!$('sellNegative24h').checked||x.change<0)),alertFirstSeen.sells).slice(0,10);
+  const sells=newestFirst(oiFilteredGood.filter(x=>x.sellState&&x.sellState.qualifies&&(!$('sellNegative24h').checked||x.change<0)),alertFirstSeen.sells).slice(0,10);
   $('sellMatches').textContent=sells.length;
   $('sellSummary').textContent=scannerTf.toUpperCase()+' RSI '+fmt(sellMin)+'–'+fmt(sellMax)+' · enter range after bearish MACD cross and remain in range · '+sellRequired+' candles'+($('sellNegative24h').checked?' · negative 24H change only':'');
   $('sellRows').innerHTML=sells.length?sells.map(x=>'<tr><td><b class="'+symbolStClass(x.st15)+'">'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+x.scannerTf.toUpperCase()+'</td><td>'+pill(x.buyRsi)+'</td><td><span class="pill high">'+x.sellState.age+'/'+sellRequired+'</span></td></tr>').join(''):'<tr><td colspan="5" class="muted">No active potential sell setups.</td></tr>';
-  const negativeMacdAlerts=newestFirst(good.filter(x=>x.r5>=70&&x.macd5&&x.macd5.hist<0),alertFirstSeen.negativeMacd);
+  const negativeMacdAlerts=newestFirst(oiFilteredGood.filter(x=>x.r5>=70&&x.macd5&&x.macd5.hist<0),alertFirstSeen.negativeMacd);
   $('negativeMacdMatches').textContent=negativeMacdAlerts.length;
   $('negativeMacdRows').innerHTML=negativeMacdAlerts.length?negativeMacdAlerts.map(x=>'<tr><td><b class="'+symbolStClass(x.st15)+'">'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+pill(x.r5)+'</td><td class="error">'+x.macd5.hist.toPrecision(6)+'</td></tr>').join(''):'<tr><td colspan="4" class="muted">No coins currently meet 5M RSI ≥70 with a negative MACD histogram.</td></tr>';
   $('last').textContent=new Date().toLocaleTimeString();
