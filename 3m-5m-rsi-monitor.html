@@ -252,14 +252,14 @@ async function runScan(){
   $('universeRows').innerHTML=universe.length?universe.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="4" class="muted">Not enough eligible coins to build a top-and-bottom universe.</td></tr>';
    const period=Math.max(2,Math.min(100,Number($('period').value)||14));
   const scannerTf=['1m','3m','5m'].includes($('scannerTf').value)?$('scannerTf').value:'3m';
-  const workers=Math.max(1,Math.min(20,Number($('workers').value)||8));
+  const workers=Math.max(1,Math.min(20,Number($('workers').value)||8));const intervals=['1m','3m','5m','15m','1h','4h'];perf.total=universe.length*intervals.length;
   const min3=Math.max(0,Math.min(100,Number($('min3').value)||0));
   const min5=Math.max(0,Math.min(100,Number($('min5').value)||0));
   $('filterSummary').textContent='3M ≥ '+fmt(min3)+' · 5M ≥ '+fmt(min5);
   setStatus('Scanning '+universe.length+' USDT-margined USDⓈ-M contracts · Potential Buy/Sell timeframe: '+scannerTf.toUpperCase()+' · RSI comparison: 3m + 5m…');
   const results=await mapLimit(universe,workers,async item=>{
    const intervals=['1m','3m','5m','15m','1h','4h'];
-   const klines=await Promise.all(intervals.map(tf=>getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(item.symbol)+'&interval='+tf+'&limit=100')));
+   const klines=await Promise.all(intervals.map(tf=>getCachedKlines(item.symbol,tf)));
    const closes=Object.fromEntries(intervals.map((tf,i)=>[tf,klines[i].slice(0,-1).map(x=>Number(x[4]))])); // Exclude Binance's still-forming candle: all indicators use closed candles only.
    const c3=closes['3m'],c5=closes['5m'],c15=closes['15m'],c1h=closes['1h'],c4h=closes['4h'];
    const buyCloses=closes[scannerTf];
