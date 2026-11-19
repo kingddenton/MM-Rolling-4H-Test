@@ -119,9 +119,11 @@ const candleCache=new Map();
 let requestConcurrency=8,activeRequests=0,requestWaiters=[],rateLimitUntil=0;
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function acquireRequestSlot(){
- while(Date.now()<rateLimitUntil)await sleep(Math.min(1000,rateLimitUntil-Date.now()));
- if(activeRequests<requestConcurrency){activeRequests++;return}
- await new Promise(resolve=>requestWaiters.push(resolve));
+ while(true){
+  while(Date.now()<rateLimitUntil)await sleep(Math.min(1000,rateLimitUntil-Date.now()));
+  if(activeRequests<requestConcurrency){activeRequests++;return}
+  await new Promise(resolve=>requestWaiters.push(resolve));
+ }
 }
 function releaseRequestSlot(){
  activeRequests--;
