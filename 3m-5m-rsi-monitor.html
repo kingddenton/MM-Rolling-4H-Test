@@ -54,6 +54,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
   <div class="field"><label for="refresh">AUTO REFRESH</label><select id="refresh"><option value="0">Off</option><option value="30">Every 30 seconds</option><option value="60" selected>Every 60 seconds</option><option value="120">Every 2 minutes</option><option value="300">Every 5 minutes</option></select></div>
   <div class="field"><label for="continuous">SCANNING MODE</label><select id="continuous"><option value="on" selected>Continuous scanning</option><option value="off">Scan once and stop</option></select></div>
  </div>
+ <p class="note">OI filters use live Binance open-interest snapshots to calculate rolling 1M, 3M and 5M percentage changes. Allow up to 5 minutes of scanning after enabling a filter to build its history. Every enabled OI timeframe must pass; disabled filters do not affect results.</p>
  <div class="actions"><button id="start">Start scanning</button><button id="once" class="secondary">Scan once</button><button id="stop" class="stop">Stop</button><button id="saveSettings" class="secondary">Save settings</button></div>
  <div class="status" id="status">Ready. Configure the scanner and select Start scanning.</div>
  <div class="stats" style="margin-top:9px"><span>Eligible pairs: <b id="eligible">—</b></span><span>Scanned: <b id="scanned">0</b></span><span>Last scan: <b id="last">—</b></span></div>
@@ -305,7 +306,7 @@ async function getCachedKlines(symbol,tf){
 }
 async function mapLimit(items,limit,fn,progressDivisor=1){
  let next=0,done=0;const out=new Array(items.length);
- async function worker(){while(!stopRequested){const i=next++;if(i>=items.length)return;const itemStarted=Date.now();performance.activeWorkers++;performance.peakWorkers=Math.max(performance.peakWorkers,performance.activeWorkers);try{out[i]=await fn(items[i]);}catch(e){out[i]={error:e.message,symbol:items[i].symbol}}finally{performance.coinTimes.set(items[i].symbol,Date.now()-itemStarted);performance.activeWorkers--}done++;$('scanned').textContent=Math.min(Math.ceil(items.length/progressDivisor),Math.floor(done/progressDivisor))}}
+ async function worker(){while(!stopRequested){const i=next++;if(i>=items.length)return;const itemStarted=Date.now();performance.activeWorkers++;performance.peakWorkers=Math.max(performance.peakWorkers,performance.activeWorkers);try{out[i]=await fn(items[i]);}catch(e){out[i]={error:e.message,symbol:items[i].symbol}}finally{if(items[i].tf)performance.coinTimes.set(items[i].symbol,Date.now()-itemStarted);performance.activeWorkers--}done++;$('scanned').textContent=Math.min(Math.ceil(items.length/progressDivisor),Math.floor(done/progressDivisor))}}
  await Promise.all(Array.from({length:Math.min(limit,items.length)},worker));return out;
 }
 function renderPerformance(){
