@@ -32,8 +32,10 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 <p class="sub">Independent Binance USDⓈ-M USDT-margined scanner · Crypto + TradFi · No trading · No API key required</p>
 <section class="panel">
  <div class="controls">
-  <div class="field"><label for="universeMode">UNIVERSE SELECTION</label><select id="universeMode"><option value="count">Top X / Bottom X</option><option value="percent" selected>24hr Price % Change</option></select></div>
-  <div class="field"><label for="universeSize">24HR CHANGE THRESHOLD (%)</label><input id="universeSize" type="number" min="0" max="100" step="0.1" value="10"></div>
+  <div class="field"><label for="universeMode">UNIVERSE SELECTION</label><select id="universeMode"><option value="percent" selected>24H change threshold</option><option value="count">Top X / Bottom X</option></select></div>
+  <div class="field" id="thresholdControl"><label for="universeSize">24H CHANGE THRESHOLD (%)</label><input id="universeSize" type="number" min="1" step="1" value="10"></div>
+  <div class="field" id="countControls" style="display:none"><label for="topCount">TOP GAINERS</label><input id="topCount" type="number" min="0" step="1" value="10"></div>
+  <div class="field" id="bottomCountControl" style="display:none"><label for="bottomCount">BOTTOM LOSERS</label><input id="bottomCount" type="number" min="0" step="1" value="10"></div>
   <div class="field"><label for="volume">MIN 24H QUOTE VOLUME (USDT)</label><input id="volume" type="number" min="0" step="100000" value="2000000"></div>
   <div class="field"><label for="period">RSI PERIOD</label><input id="period" type="number" min="2" max="100" value="14"></div>
   <div class="field"><label for="scannerTf">SETUP SCANNER TIMEFRAME</label><select id="scannerTf"><option value="1m">1 minute</option><option value="3m" selected>3 minutes</option><option value="5m">5 minutes</option></select></div>
@@ -58,7 +60,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
   <summary style="cursor:pointer;font-weight:800;display:flex;justify-content:space-between;gap:12px;align-items:center"><span>Selected Universe · <span id="universeCount">0</span> coins</span><span class="note">Tap to collapse / expand</span></summary>
   <div class="stats" style="margin:10px 0"><span>Eligible after USDT volume filter: <b id="eligibleUniverseCount">0</b></span><span>Selection: <b id="universeRule">Gainers ≥ +10% · Losers ≤ −10% (24H)</b></span><span>Minimum 24H USDT quote volume: <b id="universeVolumeRule">2,000,000 USDT</b></span></div>
   <div class="wrap"><table><thead><tr><th>#</th><th>SYMBOL</th><th>24H CHANGE</th><th>24H QUOTE VOL (USDT)</th></tr></thead><tbody id="universeRows"><tr><td colspan="4" class="muted">Universe will appear when scanning starts.</td></tr></tbody></table></div>
-  <p class="note">In 24hr Price % Change mode, the universe includes every eligible contract with a 24H gain at or above the threshold and every eligible contract with a 24H loss at or below the negative threshold. Gainer and loser counts can differ. Top X / Bottom X mode instead selects a fixed number from each end of the 24H price-change ranking.</p>
+  <p class="note">The universe is rebuilt on every scan from active USDT-quoted, USDT-margined perpetual contracts that meet the minimum 24H quote-volume filter. Threshold mode includes every eligible gainer at or above +X% and every eligible loser at or below −X%. Top X / Bottom X mode uses independently editable counts. After combining both sides, the scanner keeps at most the 100 contracts with the largest absolute 24H changes, then displays them in ascending 24H-change order.</p>
  </details>
 </section>
 <section class="panel">
@@ -93,7 +95,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 const API='https://fapi.binance.com';
 const $=id=>document.getElementById(id);
 const SETTINGS_KEY='rsi-monitor-settings-v1';
-const settingIds=['universeMode','universeSize','volume','period','scannerTf','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','workers','refresh','continuous','buyPositive24h','sellNegative24h'];
+const settingIds=['universeMode','universeSize','topCount','bottomCount','volume','period','scannerTf','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','workers','refresh','continuous','buyPositive24h','sellNegative24h'];
 function loadSettings(){
  try{
   const saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
@@ -236,19 +238,21 @@ async function runScan(){
   const eligibleCount=eligible.length;
   $('eligible').textContent=eligibleCount;
   const ranked=[...eligible].sort((a,b)=>b.change-a.change);
-  const rawSize=Math.max(1,Math.floor(Number($('universeSize').value)||10));
+  const rawSize=Math.max(1,Number($('universeSize').value)||10);
   const mode=$('universeMode').value;
-  const sideCount=Math.min(rawSize,Math.floor(eligibleCount/2));
-  const top=mode==='percent'?ranked.filter(x=>x.change>=rawSize).map(x=>({...x,side:'TOP'})):ranked.slice(0,sideCount).map(x=>({...x,side:'TOP'}));
-  const bottom=mode==='percent'?ranked.filter(x=>x.change<=-rawSize).map(x=>({...x,side:'BOTTOM'})):ranked.slice(Math.max(0,ranked.length-sideCount)).map(x=>({...x,side:'BOTTOM'}));
+  const readCount=id=>{const raw=$(id).value.trim();if(raw==='')return 0;const n=Number(raw);return Number.isFinite(n)?Math.max(0,Math.floor(n)):0};
+  const topCount=Math.min(readCount('topCount'),eligible.length);
+  const bottomCount=Math.min(readCount('bottomCount'),eligible.length);
+  const gainers=mode==='percent'?ranked.filter(x=>x.change>=rawSize):ranked.slice(0,topCount);
+  const losers=mode==='percent'?ranked.filter(x=>x.change<=-rawSize):ranked.slice(Math.max(0,ranked.length-bottomCount));
   const selectedMap=new Map();
-  top.forEach(x=>selectedMap.set(x.symbol,x));
-  bottom.forEach(x=>{if(!selectedMap.has(x.symbol))selectedMap.set(x.symbol,x)});
-  const universe=[...selectedMap.values()].sort((a,b)=>a.side===b.side?(a.side==='TOP'?b.change-a.change:a.change-b.change):(a.side==='TOP'?-1:1));
+  gainers.forEach(x=>selectedMap.set(x.symbol,x));
+  losers.forEach(x=>{if(!selectedMap.has(x.symbol))selectedMap.set(x.symbol,x)});
+  const universe=[...selectedMap.values()].sort((a,b)=>Math.abs(b.change)-Math.abs(a.change)).slice(0,100).sort((a,b)=>a.change-b.change);
   $('universeCount').textContent=universe.length;
   $('eligibleUniverseCount').textContent=eligibleCount;
   $('universeVolumeRule').textContent=fmt(minVol)+' USDT';
-  $('universeRule').textContent=mode==='percent'?'Gainers ≥ +'+fmt(rawSize)+'% · Losers ≤ −'+fmt(rawSize)+'% (24H)':'Top '+sideCount+' / Bottom '+sideCount+' · 24H price change';
+  $('universeRule').textContent=mode==='percent'?'Gainers ≥ +'+fmt(rawSize)+'% · Losers ≤ −'+fmt(rawSize)+'% (24H)':'Top '+gainers.length+' / Bottom '+losers.length+' · 24H price change';
   $('universeRows').innerHTML=universe.length?universe.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="4" class="muted">Not enough eligible coins to build a top-and-bottom universe.</td></tr>';
    const period=Math.max(2,Math.min(100,Number($('period').value)||14));
   const scannerTf=['1m','3m','5m'].includes($('scannerTf').value)?$('scannerTf').value:'3m';
@@ -295,6 +299,14 @@ async function runScan(){
  }catch(e){setStatus(e.message||'Scan failed. Check connection and retry.',true)}
  finally{scanBusy=false;if(running&&!stopRequested){if($('continuous').value==='on'){const sec=Number($('refresh').value);loopTimer=setTimeout(runScan,(sec>0?sec:60)*1000)}else{running=false;setRunningButton(false);setStatus('Single scan complete. Select Continuous scanning to keep the monitor running.')}}}
 }
+function updateUniverseControls(){
+ const countMode=$('universeMode').value==='count';
+ $('thresholdControl').style.display=countMode?'none':'block';
+ $('countControls').style.display=countMode?'block':'none';
+ $('bottomCountControl').style.display=countMode?'block':'none';
+}
+$('universeMode').addEventListener('change',()=>{updateUniverseControls();saveSettings()});
+updateUniverseControls();
 function pill(v){const cls=v<30?'low':v>70?'high':'mid';return '<span class="pill '+cls+'">'+fmt(v)+'</span>'}
 $('saveSettings').addEventListener('click',saveSettings);
 $('start').addEventListener('click',()=>{if(running)return;running=true;stopRequested=false;setRunningButton(true);clearTimeout(loopTimer);runScan()});
