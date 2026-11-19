@@ -88,7 +88,8 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 </section>
 <p class="note">RSI uses Wilder's smoothing (default period 14) and includes the currently forming Binance candle, so values can change before candle close. MACD also evaluates the currently forming candle. This page is standalone and does not share code, state, workers, or API polling with the MACD scanner.</p>
 </main>
-<section class="panel" id="performancePanel"><h2>PERFORMANCE MONITOR</h2><p class="note">Session diagnostics only. RSI, MACD, universe and alert rules are unchanged.</p><div class="stats"><span>Duration: <b id="perfDuration">—</b></span><span>Jobs started / total: <b id="perfStarted">—</b></span><span>Finished: <b id="perfFinished">—</b></span><span>Failed: <b id="perfFailed">—</b></span><span>Not started: <b id="perfPending">—</b></span><span>REST requests: <b id="perfRequests">—</b></span><span>Cache hits / misses: <b id="perfCache">—</b></span><span>Peak workers: <b id="perfWorkers">—</b></span></div><div class="status" id="perfStatus">Waiting for first scan.</div><div class="note" id="perfMissing">Unstarted timeframe jobs will appear here.</div><div class="note" id="perfErrors"></div></section>\n<script>
+<section class="panel" id="performancePanel"><h2>PERFORMANCE MONITOR</h2><p class="note">Session diagnostics only. RSI, MACD, universe and alert rules are unchanged.</p><div class="stats"><span>Duration: <b id="perfDuration">—</b></span><span>Jobs started / total: <b id="perfStarted">—</b></span><span>Finished: <b id="perfFinished">—</b></span><span>Failed: <b id="perfFailed">—</b></span><span>Not started: <b id="perfPending">—</b></span><span>REST requests: <b id="perfRequests">—</b></span><span>Cache hits / misses: <b id="perfCache">—</b></span><span>Peak workers: <b id="perfWorkers">—</b></span></div><div class="status" id="perfStatus">Waiting for first scan.</div><div class="note" id="perfMissing">Unstarted timeframe jobs will appear here.</div><div class="note" id="perfErrors"></div></section>
+<script>
 (()=>{'use strict';
 const API='https://fapi.binance.com';
 const $=id=>document.getElementById(id);
@@ -109,7 +110,9 @@ function saveSettings(){
  }catch(e){setStatus('Could not save settings. Check whether browser storage is available.',true)}
 }
 loadSettings();
-let running=false,loopTimer=null,scanBusy=false,stopRequested=false;\nconst candleCache=new Map();\nconst perf={requests:0,hits:0,misses:0,active:0,peak:0,total:0,started:0,finished:0,failed:0,missing:[],errors:[],startedKeys:new Set(),startedAt:0};\nlet rateLimitUntil=0;const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+let running=false,loopTimer=null,scanBusy=false,stopRequested=false;
+const candleCache=new Map();\nconst perf={requests:0,hits:0,misses:0,active:0,peak:0,total:0,started:0,finished:0,failed:0,missing:[],errors:[],startedKeys:new Set(),startedAt:0};
+let rateLimitUntil=0;const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 const fmt=n=>Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
 function setStatus(s,err=false){$('status').textContent=s;$('status').className='status'+(err?' error':'')}
