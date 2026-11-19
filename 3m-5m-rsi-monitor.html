@@ -50,6 +50,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
   <div class="field oi-filter-field"><label>1M OPEN INTEREST FILTER</label><label class="direction-filter"><input id="oi1Enabled" type="checkbox"> Enable 1M OI filter</label><div class="oi-range"><input id="oi1Min" type="number" step="0.1" value="0" aria-label="1 minute OI minimum percentage"><input id="oi1Max" type="number" step="0.1" value="100" aria-label="1 minute OI maximum percentage"></div><small>Minimum % / Maximum %</small></div>
   <div class="field oi-filter-field"><label>3M OPEN INTEREST FILTER</label><label class="direction-filter"><input id="oi3Enabled" type="checkbox"> Enable 3M OI filter</label><div class="oi-range"><input id="oi3Min" type="number" step="0.1" value="0" aria-label="3 minute OI minimum percentage"><input id="oi3Max" type="number" step="0.1" value="100" aria-label="3 minute OI maximum percentage"></div><small>Minimum % / Maximum %</small></div>
   <div class="field oi-filter-field"><label>5M OPEN INTEREST FILTER</label><label class="direction-filter"><input id="oi5Enabled" type="checkbox"> Enable 5M OI filter</label><div class="oi-range"><input id="oi5Min" type="number" step="0.1" value="0" aria-label="5 minute OI minimum percentage"><input id="oi5Max" type="number" step="0.1" value="100" aria-label="5 minute OI maximum percentage"></div><small>Minimum % / Maximum %</small></div>
+  <div class="field"><label for="negativeMacdRsi">NEGATIVE MACD ALERT · MINIMUM 5M RSI</label><input id="negativeMacdRsi" type="number" min="0" max="100" step="0.1" value="70"></div>
   <div class="field"><label for="workers">PARALLEL WORKERS</label><input id="workers" type="number" min="1" max="20" value="8"></div>
   <div class="field"><label for="refresh">AUTO REFRESH</label><select id="refresh"><option value="0">Off</option><option value="30">Every 30 seconds</option><option value="60" selected>Every 60 seconds</option><option value="120">Every 2 minutes</option><option value="300">Every 5 minutes</option></select></div>
   <div class="field"><label for="continuous">SCANNING MODE</label><select id="continuous"><option value="on" selected>Continuous scanning</option><option value="off">Scan once and stop</option></select></div>
@@ -104,8 +105,8 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 </section>
 </div>
 <section class="panel">
- <div class="top"><b>5M RSI ≥ 70 · NEGATIVE MACD ALERT</b><span class="note">5M RSI at least 70 AND MACD histogram below zero</span></div>
- <div class="stats" style="margin:8px 0"><span>Alert matches: <b id="negativeMacdMatches">0</b></span><span>Trigger: <b>5M RSI ≥ 70 · MACD histogram &lt; 0</b></span></div>
+ <div class="top"><b>5M RSI THRESHOLD · NEGATIVE MACD ALERT</b><span class="note" id="negativeMacdRule">5M RSI at least 70 AND MACD histogram below zero</span></div>
+ <div class="stats" style="margin:8px 0"><span>Alert matches: <b id="negativeMacdMatches">0</b></span><span>Trigger: <b id="negativeMacdTrigger">5M RSI ≥ 70 · MACD histogram &lt; 0</b></span></div>
  <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>5M RSI</th><th>1M OI Δ%</th><th>3M OI Δ%</th><th>5M OI Δ%</th><th>MACD HISTOGRAM</th></tr></thead><tbody id="negativeMacdRows"><tr><td colspan="4" class="muted">No alert matches yet.</td></tr></tbody></table></div>
  <p class="note">This alert is independent of the Potential Buy Setups. Negative MACD is defined here strictly as the MACD histogram (DIF − DEA) being below zero. The alert uses the current forming 5-minute candle.</p>
 </section>
@@ -116,7 +117,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 const API='https://fapi.binance.com';
 const $=id=>document.getElementById(id);
 const SETTINGS_KEY='rsi-monitor-settings-v1';
-const settingIds=['universeMode','universeSize','topCount','bottomCount','volume','period','scannerTf','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','oi1Enabled','oi1Min','oi1Max','oi3Enabled','oi3Min','oi3Max','oi5Enabled','oi5Min','oi5Max','workers','refresh','continuous','buyPositive24h','sellNegative24h'];
+const settingIds=['universeMode','universeSize','topCount','bottomCount','volume','period','scannerTf','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','oi1Enabled','oi1Min','oi1Max','oi3Enabled','oi3Min','oi3Max','oi5Enabled','oi5Min','oi5Max','negativeMacdRsi','workers','refresh','continuous','buyPositive24h','sellNegative24h'];
 function loadSettings(){
  try{
   const saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
@@ -451,9 +452,13 @@ async function runScan(){
   $('sellMatches').textContent=sells.length;
   $('sellSummary').textContent=scannerTf.toUpperCase()+' RSI '+fmt(sellMin)+'–'+fmt(sellMax)+' · enter range after bearish MACD cross and remain in range · '+sellRequired+' candles'+($('sellNegative24h').checked?' · negative 24H change only':'');
   $('sellRows').innerHTML=sells.length?sells.map(x=>'<tr><td><b class="'+symbolStClass(x.st15)+'">'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+x.scannerTf.toUpperCase()+'</td><td>'+pill(x.buyRsi)+'</td><td>'+oiPct(x.oi1)+'</td><td>'+oiPct(x.oi3)+'</td><td>'+oiPct(x.oi5)+'</td><td><span class="pill high">'+x.sellState.age+'/'+sellRequired+'</span></td></tr>').join(''):'<tr><td colspan="8" class="muted">No active potential sell setups.</td></tr>';
-  const negativeMacdAlerts=newestFirst(oiFilteredGood.filter(x=>x.r5>=70&&x.macd5&&x.macd5.hist<0),alertFirstSeen.negativeMacd);
+  const rawNegativeMacdThreshold=Number($('negativeMacdRsi').value);
+  const negativeMacdThreshold=Number.isFinite(rawNegativeMacdThreshold)?Math.max(0,Math.min(100,rawNegativeMacdThreshold)):70;
+  $('negativeMacdRule').textContent='5M RSI at least '+negativeMacdThreshold+' AND MACD histogram below zero';
+  $('negativeMacdTrigger').textContent='5M RSI ≥ '+negativeMacdThreshold+' · MACD histogram < 0';
+  const negativeMacdAlerts=newestFirst(oiFilteredGood.filter(x=>x.r5>=negativeMacdThreshold&&x.macd5&&x.macd5.hist<0),alertFirstSeen.negativeMacd);
   $('negativeMacdMatches').textContent=negativeMacdAlerts.length;
-  $('negativeMacdRows').innerHTML=negativeMacdAlerts.length?negativeMacdAlerts.map(x=>'<tr><td><b class="'+symbolStClass(x.st15)+'">'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+pill(x.r5)+'</td><td>'+oiPct(x.oi1)+'</td><td>'+oiPct(x.oi3)+'</td><td>'+oiPct(x.oi5)+'</td><td class="error">'+x.macd5.hist.toPrecision(6)+'</td></tr>').join(''):'<tr><td colspan="7" class="muted">No coins currently meet 5M RSI ≥70 with a negative MACD histogram.</td></tr>';
+  $('negativeMacdRows').innerHTML=negativeMacdAlerts.length?negativeMacdAlerts.map(x=>'<tr><td><b class="'+symbolStClass(x.st15)+'">'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+pill(x.r5)+'</td><td>'+oiPct(x.oi1)+'</td><td>'+oiPct(x.oi3)+'</td><td>'+oiPct(x.oi5)+'</td><td class="error">'+x.macd5.hist.toPrecision(6)+'</td></tr>').join(''):'<tr><td colspan="7" class="muted">No coins currently meet the selected 5M RSI threshold with a negative MACD histogram.</td></tr>';
   $('last').textContent=new Date().toLocaleTimeString();
   const errors=results.filter(x=>x&&x.error).length;
   const coinTimes=[...performance.coinTimes.entries()].map(([symbol,ms])=>({symbol,ms})).sort((a,b)=>a.ms-b.ms);
