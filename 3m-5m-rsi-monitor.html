@@ -88,7 +88,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 </section>
 <p class="note">RSI uses Wilder's smoothing (default period 14) and includes the currently forming Binance candle, so values can change before candle close. MACD also evaluates the currently forming candle. This page is standalone and does not share code, state, workers, or API polling with the MACD scanner.</p>
 </main>
-<script>
+<section class="panel" id="performancePanel"><h2>PERFORMANCE MONITOR</h2><p class="note">Session diagnostics only. RSI, MACD, universe and alert rules are unchanged.</p><div class="stats"><span>Duration: <b id="perfDuration">—</b></span><span>Jobs started / total: <b id="perfStarted">—</b></span><span>Finished: <b id="perfFinished">—</b></span><span>Failed: <b id="perfFailed">—</b></span><span>Not started: <b id="perfPending">—</b></span><span>REST requests: <b id="perfRequests">—</b></span><span>Cache hits / misses: <b id="perfCache">—</b></span><span>Peak workers: <b id="perfWorkers">—</b></span></div><div class="status" id="perfStatus">Waiting for first scan.</div><div class="note" id="perfMissing">Unstarted timeframe jobs will appear here.</div><div class="note" id="perfErrors"></div></section>\n<script>
 (()=>{'use strict';
 const API='https://fapi.binance.com';
 const $=id=>document.getElementById(id);
@@ -109,7 +109,7 @@ function saveSettings(){
  }catch(e){setStatus('Could not save settings. Check whether browser storage is available.',true)}
 }
 loadSettings();
-let running=false,loopTimer=null,scanBusy=false,stopRequested=false;
+let running=false,loopTimer=null,scanBusy=false,stopRequested=false;\nconst candleCache=new Map();\nconst perf={requests:0,hits:0,misses:0,active:0,peak:0,total:0,started:0,finished:0,failed:0,missing:[],errors:[],startedKeys:new Set(),startedAt:0};\nlet rateLimitUntil=0;const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 const fmt=n=>Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
 function setStatus(s,err=false){$('status').textContent=s;$('status').className='status'+(err?' error':'')}
@@ -211,10 +211,12 @@ function macdCrossoverAge(closes){
  }
  return 0;
 }
-async function getJson(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error('Binance HTTP '+r.status);return r.json()}
+async function getJson(url){if(Date.now()<rateLimitUntil)await sleep(rateLimitUntil-Date.now());perf.requests++;const r=await fetch(url,{cache:'no-store'});if(!r.ok){const e=new Error('Binance HTTP '+r.status);if(r.status===418||r.status===429){const retry=Math.max(30,Number(r.headers.get('Retry-After'))||(r.status===418?120:60));rateLimitUntil=Math.max(rateLimitUntil,Date.now()+retry*1000);}throw e;}return r.json()}
+async function getCachedKlines(symbol,tf){const key=symbol+'|'+tf,cached=candleCache.get(key);let rows;perf.started++;perf.startedKeys.add(key);try{if(!cached){perf.misses++;rows=await getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(symbol)+'&interval='+tf+'&limit=100')}else{perf.hits++;rows=await getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(symbol)+'&interval='+tf+'&startTime='+cached[cached.length-1][0]+'&limit=100');if(rows.length>=100)rows=await getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(symbol)+'&interval='+tf+'&limit=100');else{const merged=new Map(cached.map(row=>[Number(row[0]),row]));for(const row of rows)merged.set(Number(row[0]),row);rows=[...merged.values()].sort((a,b)=>Number(a[0])-Number(b[0])).slice(-100)}}candleCache.set(key,rows.slice(-100));return candleCache.get(key)}catch(e){perf.failed++;perf.errors.push(symbol+' '+tf+': '+e.message);throw e}finally{perf.finished++}}
+function renderPerformance(){$('perfDuration').textContent=((Date.now()-perf.startedAt)/1000).toFixed(1)+'s';$('perfStarted').textContent=perf.started+'/'+perf.total;$('perfFinished').textContent=String(perf.finished);$('perfFailed').textContent=String(perf.failed);$('perfPending').textContent=String(Math.max(0,perf.total-perf.started));$('perfRequests').textContent=String(perf.requests);$('perfCache').textContent=perf.hits+' / '+perf.misses;$('perfWorkers').textContent=String(perf.peak);$('perfStatus').textContent='Started '+perf.started+' · finished '+perf.finished+' · failed '+perf.failed+' · not started '+Math.max(0,perf.total-perf.started);$('perfMissing').textContent=perf.missing.length?'Not-started jobs: '+perf.missing.join(', '):'No timeframe jobs remain unstarted.';$('perfErrors').textContent=perf.errors.length?'Recent errors: '+perf.errors.slice(-12).join(' | '):'No timeframe request errors in this cycle.'}
 async function mapLimit(items,limit,fn){
  let next=0,done=0;const out=new Array(items.length);
- async function worker(){while(!stopRequested){const i=next++;if(i>=items.length)return;try{out[i]=await fn(items[i]);}catch(e){out[i]={error:e.message,symbol:items[i].symbol}}done++;$('scanned').textContent=done}}
+ async function worker(){while(!stopRequested){const i=next++;if(i>=items.length)return;perf.active++;perf.peak=Math.max(perf.peak,perf.active);try{out[i]=await fn(items[i]);}catch(e){out[i]={error:e.message,symbol:items[i].symbol}}finally{perf.active--}done++;$('scanned').textContent=done}}
  await Promise.all(Array.from({length:Math.min(limit,items.length)},worker));return out;
 }
 const alertFirstSeen={matches:new Map(),buys:new Map(),sells:new Map(),negativeMacd:new Map()};
@@ -226,7 +228,7 @@ function newestFirst(items,tracker){
  return [...items].sort((a,b)=>tracker.get(b.symbol).time-tracker.get(a.symbol).time||tracker.get(b.symbol).sequence-tracker.get(a.symbol).sequence);
 }
 async function runScan(){
- if(scanBusy)return;scanBusy=true;stopRequested=false;setRunningButton(running);$('scanned').textContent='0';
+ if(scanBusy)return;scanBusy=true;stopRequested=false;setRunningButton(running);$('scanned').textContent='0';perf.requests=0;perf.hits=0;perf.misses=0;perf.active=0;perf.peak=0;perf.started=0;perf.finished=0;perf.failed=0;perf.errors=[];perf.missing=[];perf.startedKeys=new Set();perf.startedAt=Date.now();
  try{
   setStatus('Loading active USDⓈ-M USDT-margined markets (including TradFi)…');
   const [info,tickers]=await Promise.all([getJson(API+'/fapi/v1/exchangeInfo'),getJson(API+'/fapi/v1/ticker/24hr')]);
@@ -292,8 +294,8 @@ async function runScan(){
   $('last').textContent=new Date().toLocaleTimeString();
   const errors=results.filter(x=>x&&x.error).length;
   setStatus('Scan complete: '+matches.length+' coins match both RSI filters out of '+good.length+' valid pairs'+(errors?' · '+errors+' pair errors':'')+'.');
- }catch(e){setStatus(e.message||'Scan failed. Check connection and retry.',true)}
- finally{scanBusy=false;if(running&&!stopRequested){if($('continuous').value==='on'){const sec=Number($('refresh').value);loopTimer=setTimeout(runScan,(sec>0?sec:60)*1000)}else{running=false;setRunningButton(false);setStatus('Single scan complete. Select Continuous scanning to keep the monitor running.')}}}
+ }catch(e){renderPerformance();setStatus((e.message||'Scan failed. Check connection and retry.')+(Date.now()<rateLimitUntil?' · Binance cooldown active':''),true)}
+ finally{renderPerformance();scanBusy=false;if(running&&!stopRequested){if($('continuous').value==='on'){const sec=Number($('refresh').value);const wait=Date.now()<rateLimitUntil?Math.max(1000,rateLimitUntil-Date.now()):(sec>0?sec*1000:60000);loopTimer=setTimeout(runScan,wait)}else{running=false;setRunningButton(false);setStatus('Single scan complete. Select Continuous scanning to keep the monitor running.')}}}
 }
 function pill(v){const cls=v<30?'low':v>70?'high':'mid';return '<span class="pill '+cls+'">'+fmt(v)+'</span>'}
 $('saveSettings').addEventListener('click',saveSettings);
