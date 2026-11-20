@@ -216,7 +216,7 @@ function connectPriceChunk(index){
  const symbols=priceWsSymbols.slice(index*40,(index+1)*40);
  if(!symbols.length)return;
  const streams=symbols.map(s=>s.toLowerCase()+'@kline_1m');
- const ws=new WebSocket('wss://fstream.binance.com/stream?streams='+streams.join('/'));
+ const ws=new WebSocket('wss://fstream.binance.com/market/stream?streams='+streams.join('/'));
  let wasOpen=false;
  priceWs.set(index,ws);
  updatePriceStreamStatus();
