@@ -161,6 +161,8 @@ let running=false,loopTimer=null,scanBusy=false,stopRequested=false;
 // and cap all simultaneous Binance REST requests independently of coin-level workers.
 let exchangeInfoCache=null;
 const candleCache=new Map();
+const candleWsFresh=new Map();
+let coreWs=new Map(),coreWsSymbolsKey='',coreWsStopped=true,coreWsOpen=0,coreWsRetry=new Map();
 const oiSamples=new Map();
 let requestConcurrency=8,activeRequests=0,requestWaiters=[],rateLimitUntil=0;
 const performance={restRequests:0,cacheHits:0,cacheMisses:0,activeWorkers:0,peakWorkers:0,history:[],last:null,coinTimes:new Map(),startedJobs:0,finishedJobs:0,checkedJobs:0,failures:0,startedJobKeys:new Set(),totalJobs:0,scanStarted:0,universeMs:0};
@@ -172,13 +174,14 @@ function renderPriceAlerts(){
 }
 function updatePriceStreamStatus(){
  const total=Math.ceil(priceWsSymbols.length/40);
- $('priceStreamStatus').textContent=priceWsStopped?'Stopped':priceWsOpen===total&&total?'Connected · live ('+priceWsOpen+'/'+total+')':priceWsOpen?'Connected · '+priceWsOpen+'/'+total+' streams':'Connecting · 0/'+total+' streams';
+ $('priceStreamStatus').textContent=(priceWsStopped?'Stopped':priceWsOpen===total&&total?'Connected · live ('+priceWsOpen+'/'+total+')':priceWsOpen?'Connected · '+priceWsOpen+'/'+total+' streams':'Connecting · 0/'+total+' streams')+' · Core TF '+coreWsOpen+'/'+coreWs.size;
  $('priceStreamCount').textContent=String(priceWsSymbols.length);
 }
 function handlePriceStreamMessage(event){
  try{
   const payload=JSON.parse(event.data),k=payload.data&&payload.data.k;
   if(!k||k.i!=='1m')return;
+  cacheKlineEvent(k);
   const open=Number(k.o),price=Number(k.c);
   if(!(open>0)||!Number.isFinite(price)||!k.s||!Number.isFinite(Number(k.t)))return;
   const change=(price-open)/open*100,threshold=getPriceAlertThreshold();
@@ -202,6 +205,32 @@ function handlePriceStreamMessage(event){
   $('priceProcessingErrors').textContent=String(priceProcessingErrors);
   $('priceStreamStatus').textContent='Message processing error: '+(e&&e.message?e.message:'invalid WebSocket data');
  }
+}
+function closeCoreSockets(){
+ for(const ws of coreWs.values()){ws.onclose=null;ws.onerror=null;try{ws.close()}catch(e){}}
+ coreWs.clear();coreWsOpen=0;
+}
+function stopCoreMarketStream(){coreWsStopped=true;closeCoreSockets();coreWsRetry.clear()}
+function handleCoreMarketMessage(event){
+ try{const payload=JSON.parse(event.data),k=payload.data&&payload.data.k;if(!k)return;cacheKlineEvent(k)}
+ catch(e){priceProcessingErrors++;$('priceProcessingErrors').textContent=String(priceProcessingErrors)}
+}
+function connectCoreChunk(index,symbols){
+ if(coreWsStopped||!running)return;
+ const streams=symbols.flatMap(symbol=>['3m','5m','15m','1h','4h'].map(tf=>symbol.toLowerCase()+'@kline_'+tf));
+ const ws=new WebSocket('wss://fstream.binance.com/market/stream?streams='+streams.join('/'));
+ let wasOpen=false;coreWs.set(index,ws);
+ ws.onopen=()=>{if(coreWs.get(index)!==ws)return;wasOpen=true;coreWsOpen++;coreWsRetry.set(index,1000);updatePriceStreamStatus()};
+ ws.onmessage=event=>{if(coreWs.get(index)!==ws)return;handleCoreMarketMessage(event)};
+ ws.onerror=()=>{};
+ ws.onclose=()=>{if(coreWs.get(index)!==ws)return;coreWs.delete(index);if(wasOpen)coreWsOpen=Math.max(0,coreWsOpen-1);updatePriceStreamStatus();if(coreWsStopped||!running)return;const delay=coreWsRetry.get(index)||1000;coreWsRetry.set(index,Math.min(delay*2,30000));setTimeout(()=>connectCoreChunk(index,symbols),delay)};
+}
+function updateCoreMarketStream(symbols){
+ const next=[...new Set(symbols)].sort(),key=next.join(',');
+ const total=Math.ceil(next.length/16);
+ if(key===coreWsSymbolsKey&&coreWs.size===total&&[...coreWs.values()].every(ws=>ws.readyState===WebSocket.OPEN||ws.readyState===WebSocket.CONNECTING))return;
+ coreWsSymbolsKey=key;coreWsStopped=false;closeCoreSockets();coreWsRetry.clear();
+ for(let i=0;i<total;i++)connectCoreChunk(i,next.slice(i*16,(i+1)*16));
 }
 function closePriceSockets(){
  for(const ws of priceWs.values()){ws.onclose=null;ws.onerror=null;try{ws.close()}catch(e){}}
@@ -422,16 +451,30 @@ async function getJson(url){
   releaseRequestSlot();
  }
 }
+function intervalMs(tf){return ({'1m':60000,'3m':180000,'5m':300000,'15m':900000,'1h':3600000,'4h':14400000})[tf]||60000}
+function cacheKlineEvent(k){
+ if(!k||!k.s||!k.i)return;
+ const tf=k.i,key=k.s+'|'+tf;
+ const row=[Number(k.t),Number(k.o),Number(k.h),Number(k.l),Number(k.c),Number(k.v),Number(k.T),Number(k.q),Number(k.n),Number(k.V),Number(k.Q),Number(k.B||0)];
+ if(!row.every(Number.isFinite))return;
+ const rows=candleCache.get(key)||[];
+ const existing=rows.findIndex(x=>Number(x[0])===row[0]);
+ if(existing>=0)rows[existing]=row;else rows.push(row);
+ rows.sort((a,b)=>Number(a[0])-Number(b[0]));
+ if(rows.length>100)rows.splice(0,rows.length-100);
+ candleCache.set(key,rows);candleWsFresh.set(key,Date.now());
+}
 async function getCachedKlines(symbol,tf){
- const key=symbol+'|'+tf,cached=candleCache.get(key);
+ const key=symbol+'|'+tf,cached=candleCache.get(key),freshAt=candleWsFresh.get(key);
+ if(cached&&cached.length>=40&&freshAt&&Date.now()-freshAt<intervalMs(tf)*2){performance.cacheHits++;return cached}
  if(!cached){performance.cacheMisses++;const rows=await getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(symbol)+'&interval='+tf+'&limit=100');candleCache.set(key,rows.slice(-100));return candleCache.get(key)}
  performance.cacheHits++;
- // Re-fetch from the last cached candle's open time so the current candle is refreshed too.
+ // REST remains the recovery path whenever the WebSocket cache is missing or stale.
  let rows=await getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(symbol)+'&interval='+tf+'&startTime='+cached[cached.length-1][0]+'&limit=100');
  if(rows.length>=100){rows=await getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(symbol)+'&interval='+tf+'&limit=100');candleCache.set(key,rows.slice(-100));return candleCache.get(key)}
  const merged=new Map(cached.map(row=>[Number(row[0]),row]));
  for(const row of rows)merged.set(Number(row[0]),row);
- const updated=[...merged.values()].sort((a,b)=>Number(a[0])-Number(b[0])).slice(-100);
+ const updated=[...merged.values()].sort((a,b)=>a[0]-b[0]).slice(-100);
  candleCache.set(key,updated);return updated;
 }
 async function mapLimit(items,limit,fn,progressDivisor=1){
@@ -500,6 +543,7 @@ async function runScan(){
   $('filterSummary').textContent='3M ≥ '+fmt(min3)+' · 5M ≥ '+fmt(min5);
   setStatus('Scanning '+universe.length+' USDT-margined USDⓈ-M contracts · Potential Buy/Sell timeframe: '+scannerTf.toUpperCase()+' · RSI comparison: 3m + 5m…');
   const intervals=['1m','3m','5m','15m','1h','4h'];
+  if(running)updateCoreMarketStream(candidateUniverse.map(x=>x.symbol));
   const timeframeJobs=universe.flatMap(item=>intervals.map(tf=>({symbol:item.symbol,tf})));
   performance.totalJobs=timeframeJobs.length;
   const fetchedJobs=await mapLimit(timeframeJobs,workers,async job=>{
@@ -624,7 +668,7 @@ function oiPct(v){if(!Number.isFinite(v))return '<span class="muted">Warming</sp
 $('saveSettings').addEventListener('click',saveSettings);
 $('start').addEventListener('click',()=>{if(running)return;running=true;stopRequested=false;priceWsStopped=false;setRunningButton(true);clearTimeout(loopTimer);runScan()});
 $('once').addEventListener('click',()=>{if(running){setStatus('Stop automatic scanning before using Scan once.');return}stopRequested=false;runScan()});
-$('stop').addEventListener('click',()=>{running=false;stopRequested=true;stopPriceStream();setRunningButton(false);clearTimeout(loopTimer);setStatus(scanBusy?'Stop requested; finishing current requests…':'Scanner stopped.')});
+$('stop').addEventListener('click',()=>{running=false;stopRequested=true;stopPriceStream();stopCoreMarketStream();setRunningButton(false);clearTimeout(loopTimer);setStatus(scanBusy?'Stop requested; finishing current requests…':'Scanner stopped.')});
 $('refresh').addEventListener('change',()=>{if(running&&!scanBusy){clearTimeout(loopTimer);const sec=Number($('refresh').value)||0;if(sec)loopTimer=setTimeout(runScan,sec*1000);else{running=false;setRunningButton(false)}}});
 })();
 </script></body></html>
