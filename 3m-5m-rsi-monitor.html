@@ -196,14 +196,15 @@ function connectPriceChunk(index){
  if(!symbols.length)return;
  const streams=symbols.map(s=>s.toLowerCase()+'@kline_1m');
  const ws=new WebSocket('wss://fstream.binance.com/stream?streams='+streams.join('/'));
+ let wasOpen=false;
  priceWs.set(index,ws);
  updatePriceStreamStatus();
- ws.onopen=()=>{if(priceWs.get(index)!==ws)return;priceWsRetry=1000;priceWsOpen++;updatePriceStreamStatus()};
+ ws.onopen=()=>{if(priceWs.get(index)!==ws)return;wasOpen=true;priceWsRetry=1000;priceWsOpen++;updatePriceStreamStatus()};
  ws.onmessage=event=>{if(priceWs.get(index)===ws)handlePriceStreamMessage(event)};
  ws.onerror=()=>{if(priceWs.get(index)===ws)updatePriceStreamStatus()};
  ws.onclose=()=>{
   if(priceWs.get(index)!==ws)return;
-  priceWs.delete(index);if(ws.readyState===WebSocket.OPEN)priceWsOpen=Math.max(0,priceWsOpen-1);
+  priceWs.delete(index);if(wasOpen)priceWsOpen=Math.max(0,priceWsOpen-1);
   updatePriceStreamStatus();
   if(priceWsStopped||!running)return;
   const delay=priceWsRetry;priceWsRetry=Math.min(priceWsRetry*2,30000);
