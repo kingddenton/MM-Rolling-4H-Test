@@ -626,14 +626,14 @@ async function runScan(){
   const buys=newestFirst(oiFilteredGood.filter(x=>x.buyState&&x.buyState.qualifies&&(!$('buyPositive24h').checked||x.change>0)),alertFirstSeen.buys).slice(0,10);
   $('buyMatches').textContent=buys.length;
   $('buySummary').textContent=scannerTf.toUpperCase()+' RSI '+fmt(buyMin)+'–'+fmt(buyMax)+' · enter range after bullish MACD cross and remain in range · '+required+' candles'+($('buyPositive24h').checked?' · positive 24H change only':'');
-  $('buyRows').innerHTML=buys.length?buys.map(x=>'<div class="alert-line"><strong class="'+symbolStClass(x.st15)+'">'+x.symbol+'</strong><span class="line-meta">'+(x.change>=0?'+':'')+fmt(x.change)+'% · '+x.scannerTf.toUpperCase()+' · RSI '+fmt(x.buyRsi)+' · '+x.buyState.age+'/'+required+'</span></div>').join(''):'<div class="muted">No active potential buy setups.</div>';
+  $('buyRows').innerHTML=buys.length?buys.map(x=>'<div class="alert-line"><strong class="'+symbolStClass(x.st15)+'">'+x.symbol+'</strong><span class="line-meta">'+(x.change>=0?'+':'')+fmt(x.change)+'% · RSI '+fmt(x.buyRsi)+' · '+x.buyState.age+'/'+required+'</span></div>').join(''):'<div class="muted">No active potential buy setups.</div>';
   const sellMin=Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33));
   const sellMax=Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42));
   const sellRequired=Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5));
   const sells=newestFirst(oiFilteredGood.filter(x=>x.sellState&&x.sellState.qualifies&&(!$('sellNegative24h').checked||x.change<0)),alertFirstSeen.sells).slice(0,10);
   $('sellMatches').textContent=sells.length;
   $('sellSummary').textContent=scannerTf.toUpperCase()+' RSI '+fmt(sellMin)+'–'+fmt(sellMax)+' · enter range after bearish MACD cross and remain in range · '+sellRequired+' candles'+($('sellNegative24h').checked?' · negative 24H change only':'');
-  $('sellRows').innerHTML=sells.length?sells.map(x=>'<div class="alert-line"><strong class="'+symbolStClass(x.st15)+'">'+x.symbol+'</strong><span class="line-meta">'+(x.change>=0?'+':'')+fmt(x.change)+'% · '+x.scannerTf.toUpperCase()+' · RSI '+fmt(x.buyRsi)+' · '+x.sellState.age+'/'+sellRequired+'</span></div>').join(''):'<div class="muted">No active potential sell setups.</div>';
+  $('sellRows').innerHTML=sells.length?sells.map(x=>'<div class="alert-line"><strong class="'+symbolStClass(x.st15)+'">'+x.symbol+'</strong><span class="line-meta">'+(x.change>=0?'+':'')+fmt(x.change)+'% · RSI '+fmt(x.buyRsi)+' · '+x.sellState.age+'/'+sellRequired+'</span></div>').join(''):'<div class="muted">No active potential sell setups.</div>';
   const rawNegativeMacdThreshold=Number($('negativeMacdRsi').value);
   const negativeMacdThreshold=Number.isFinite(rawNegativeMacdThreshold)?Math.max(0,Math.min(100,rawNegativeMacdThreshold)):70;
   $('negativeMacdRule').textContent='5M RSI at least '+negativeMacdThreshold+' AND MACD histogram below zero';
