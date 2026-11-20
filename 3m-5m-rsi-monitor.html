@@ -89,8 +89,9 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <div class="top"><b>WHOLE-UNIVERSE · 1M PRICE CHANGE ALERT</b><span class="note" id="priceAlertRule">Live candle · ±2.00% from candle open</span></div>
  <div class="controls" style="grid-template-columns:minmax(130px,180px);margin-top:9px"><div class="field"><label for="priceChangeThreshold">PRICE CHANGE THRESHOLD (%)</label><input id="priceChangeThreshold" type="number" min="0.1" max="100" step="0.1" value="2"></div></div>
  <div class="stats"><span>Stream status: <b id="priceStreamStatus">Waiting for scanner</b></span><span>Pairs monitored: <b id="priceStreamCount">0</b></span><span>Alerts: <b id="priceAlertCount">0</b></span></div>
+ <div class="stats"><span>1M updates received: <b id="priceUpdateCount">0</b></span><span>Last update: <b id="priceLastUpdate">—</b></span><span>Latest movement: <b id="priceLatestMove">—</b></span><span>Applied threshold: <b id="priceAppliedThreshold">0.10%</b></span></div>
  <div class="wrap"><table class="price-alert-table"><thead><tr><th>TIME</th><th>SIDE</th><th>SYMBOL</th><th>1M CHANGE</th><th>PRICE</th></tr></thead><tbody id="priceAlertRows"><tr><td colspan="5" class="muted">Start scanning to monitor every eligible USDT perpetual pair.</td></tr></tbody></table></div>
- <p class="note">Uses Binance 1-minute WebSocket kline updates for every active USDT-margined perpetual pair passing the minimum 24H quote-volume filter. Alerts fire immediately when the live candle reaches +2.00% or −2.00%, once per symbol per candle.</p>
+ <p class="note" id="priceAlertExplanation">Uses Binance 1-minute WebSocket kline updates for every active USDT-margined perpetual pair passing the minimum 24H quote-volume filter. Alerts fire immediately at the configured positive or negative threshold, once per symbol per candle.</p>
 </section>
 <section class="panel">
  <div class="top"><b>RSI filter matches</b><span class="note">Both conditions must pass: 3M RSI ≥ threshold AND 5M RSI ≥ threshold</span></div>
@@ -140,9 +141,15 @@ function saveSettings(){
  }catch(e){setStatus('Could not save settings. Check whether browser storage is available.',true)}
 }
 loadSettings();
+function getPriceAlertThreshold(){
+ const raw=Number($('priceChangeThreshold').value);
+ return Math.max(0.1,Math.min(100,Number.isFinite(raw)&&raw>0?raw:2));
+}
 function updatePriceAlertRule(){
- const value=Math.max(0.1,Math.min(100,Number($('priceChangeThreshold').value)||2));
+ const value=getPriceAlertThreshold();
  $('priceAlertRule').textContent='Live candle · ±'+value.toFixed(2)+'% from candle open';
+ $('priceAppliedThreshold').textContent=value.toFixed(2)+'%';
+ $('priceAlertExplanation').textContent='Uses Binance 1-minute WebSocket kline updates for every active USDT-margined perpetual pair passing the minimum 24H quote-volume filter. Alerts fire immediately at +'+value.toFixed(2)+'% or −'+value.toFixed(2)+'% from the current 1-minute candle open, once per symbol per candle.';
 }
 $('priceChangeThreshold').addEventListener('input',updatePriceAlertRule);
 updatePriceAlertRule();
@@ -155,7 +162,7 @@ const oiSamples=new Map();
 let requestConcurrency=8,activeRequests=0,requestWaiters=[],rateLimitUntil=0;
 const performance={restRequests:0,cacheHits:0,cacheMisses:0,activeWorkers:0,peakWorkers:0,history:[],last:null,coinTimes:new Map(),startedJobs:0,finishedJobs:0,checkedJobs:0,failures:0,startedJobKeys:new Set(),totalJobs:0,scanStarted:0,universeMs:0};
 let priceWs=new Map(),priceWsSymbols=[],priceWsSymbolsKey='',priceWsRetry=1000,priceWsStopped=true,priceWsOpen=0;
-const priceAlertedCandles=new Map(),priceAlertHistory=[];
+const priceAlertedCandles=new Map(),priceAlertHistory=[];let priceUpdateCount=0,priceLastUpdate='—',priceLatestMove='—';
 function renderPriceAlerts(){
  $('priceAlertCount').textContent=String(priceAlertHistory.length);
  $('priceAlertRows').innerHTML=priceAlertHistory.length?priceAlertHistory.map(a=>'<tr><td>'+a.time+'</td><td class="'+(a.side==='BULLISH'?'price-alert-bull':'price-alert-bear')+'">'+a.side+'</td><td><b>'+a.symbol+'</b></td><td class="'+(a.side==='BULLISH'?'price-alert-bull':'price-alert-bear')+'">'+(a.change>=0?'+':'')+a.change.toFixed(2)+'%</td><td>'+a.price+'</td></tr>').join(''):'<tr><td colspan="5" class="muted">No 1-minute price-change alerts yet.</td></tr>';
@@ -170,18 +177,26 @@ function handlePriceStreamMessage(event){
   const payload=JSON.parse(event.data),k=payload.data&&payload.data.k;
   if(!k||k.i!=='1m')return;
   const open=Number(k.o),price=Number(k.c);
-  if(!(open>0)||!Number.isFinite(price))return;
-  const change=(price-open)/open*100;
-  const threshold=Math.max(0.1,Math.min(100,Number($('priceChangeThreshold').value)||2));
+  if(!(open>0)||!Number.isFinite(price)||!k.s||!Number.isFinite(Number(k.t)))return;
+  const change=(price-open)/open*100,threshold=getPriceAlertThreshold();
+  priceUpdateCount++;
+  priceLastUpdate=new Date().toLocaleTimeString();
+  priceLatestMove=k.s+' '+(change>=0?'+':'')+change.toFixed(3)+'%';
+  $('priceUpdateCount').textContent=String(priceUpdateCount);
+  $('priceLastUpdate').textContent=priceLastUpdate;
+  $('priceLatestMove').textContent=priceLatestMove;
+  $('priceAppliedThreshold').textContent=threshold.toFixed(2)+'%';
   if(change<threshold&&change>-threshold)return;
   const candleKey=String(k.t),prior=priceAlertedCandles.get(k.s);
   if(prior===candleKey)return;
   priceAlertedCandles.set(k.s,candleKey);
   const side=change>=threshold?'BULLISH':'BEARISH';
-  priceAlertHistory.unshift({time:new Date().toLocaleTimeString(),side,symbol:k.s,change,price:price.toPrecision(8)});
+  priceAlertHistory.unshift({time:priceLastUpdate,side,symbol:k.s,change,price:price.toPrecision(8)});
   if(priceAlertHistory.length>20)priceAlertHistory.length=20;
   renderPriceAlerts();
- }catch(e){/* Ignore malformed stream messages; the next update will be processed. */}
+ }catch(e){
+  $('priceStreamStatus').textContent='Message processing error: '+(e&&e.message?e.message:'invalid WebSocket data');
+ }
 }
 function closePriceSockets(){
  for(const ws of priceWs.values()){ws.onclose=null;ws.onerror=null;try{ws.close()}catch(e){}}
