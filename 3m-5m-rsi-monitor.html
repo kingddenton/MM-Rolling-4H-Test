@@ -105,6 +105,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 <section class="panel alert-card setup-alert-card"><div class="top"><b>Potential sell setups</b><span class="note" id="sellMatches">0</span></div>
  <label class="direction-filter"><input id="sellNegative24h" type="checkbox"> Negative 24H change only</label>
  <div class="note" id="sellSummary">—</div><div class="alert-lines" id="sellRows"><div class="muted">No potential sell setups yet.</div></div>
+ <div class="price-direction-block" style="margin-top:14px"><div class="top"><b class="price-alert-bear">24H HIGH REJECTION · SHORT WATCH</b><span class="note" id="highRejectCount">0/10</span></div><div class="note">Within 1% of rolling 24H high, then a completed 1M candle closes bearish.</div><div class="alert-lines" id="highRejectRows"><div class="muted">Waiting for 24H high rejection signals.</div></div></div>
 </section>
 </div>
 <section class="panel">
@@ -164,7 +165,7 @@ const oiSamples=new Map();
 let requestConcurrency=8,activeRequests=0,requestWaiters=[],rateLimitUntil=0;
 const performance={restRequests:0,cacheHits:0,cacheMisses:0,activeWorkers:0,peakWorkers:0,history:[],last:null,coinTimes:new Map(),startedJobs:0,finishedJobs:0,checkedJobs:0,failures:0,startedJobKeys:new Set(),totalJobs:0,scanStarted:0,universeMs:0};
 let priceWs=new Map(),priceWsSymbols=[],priceWsSymbolsKey='',priceWsRetry=1000,priceWsStopped=true,priceWsOpen=0;
-const priceAlertedCandles=new Map(),priceAlertHistory=[];let priceUpdateCount=0,priceLastUpdate='—',priceLatestMove='—';let priceRawMessageCount=0,priceProcessingErrors=0,priceFirstRawMessage='';let priceSocketEvents=[],priceSocketIssues=[];
+const priceAlertedCandles=new Map(),priceAlertHistory=[];const rolling24hHighs=new Map(),highRejectAlertedCandles=new Map(),highRejectHistory=[];let priceUpdateCount=0,priceLastUpdate='—',priceLatestMove='—';let priceRawMessageCount=0,priceProcessingErrors=0,priceFirstRawMessage='';let priceSocketEvents=[],priceSocketIssues=[];
 function renderPriceAlerts(){
  const bullish=priceAlertHistory.filter(a=>a.side==='BULLISH').slice(0,10),bearish=priceAlertHistory.filter(a=>a.side==='BEARISH').slice(0,10);
  $('priceAlertCount').textContent=String(priceAlertHistory.length);
@@ -174,6 +175,10 @@ function renderPriceAlerts(){
  const line=a=>'<div class="alert-line"><strong class="price-alert-'+(a.side==='BULLISH'?'bull':'bear')+'">'+a.symbol+'</strong><span class="line-meta">'+(a.change>=0?'+':'')+a.change.toFixed(2)+'% · '+a.time+'</span></div>';
  $('priceBullRows').innerHTML=bullish.length?bullish.map(line).join(''):'<div class="muted">No bullish 1M alerts yet.</div>';
  $('priceBearRows').innerHTML=bearish.length?bearish.map(line).join(''):'<div class="muted">No bearish 1M alerts yet.</div>';
+}
+function renderHighRejectAlerts(){
+ $('highRejectCount').textContent=highRejectHistory.length+'/10';
+ $('highRejectRows').innerHTML=highRejectHistory.length?highRejectHistory.map(a=>'<div class="alert-line"><strong class="price-alert-bear">'+a.symbol+'</strong><span class="line-meta">−'+a.distance.toFixed(2)+'% from 24H high · '+a.time+'</span></div>').join(''):'<div class="muted">No 24H high rejection signals yet.</div>';
 }
 function updatePriceStreamStatus(){
  const total=Math.ceil(priceWsSymbols.length/40);
@@ -195,6 +200,17 @@ function handlePriceStreamMessage(event){
   $('priceLastUpdate').textContent=priceLastUpdate;
   $('priceLatestMove').textContent=priceLatestMove;
   $('priceAppliedThreshold').textContent=threshold.toFixed(2)+'%';
+  if(k.x===true&&open>0&&Number(k.h)>0&&price<open){
+   const dayHigh=rolling24hHighs.get(k.s),nearHigh=dayHigh>0&&Number(k.h)>=dayHigh*0.99;
+   const candleKey=String(k.t),priorReject=highRejectAlertedCandles.get(k.s);
+   if(nearHigh&&priorReject!==candleKey){
+    highRejectAlertedCandles.set(k.s,candleKey);
+    const distance=(dayHigh-price)/dayHigh*100;
+    highRejectHistory.unshift({symbol:k.s,time:priceLastUpdate,distance,price});
+    if(highRejectHistory.length>10)highRejectHistory.length=10;
+    renderHighRejectAlerts();
+   }
+  }
   if(change<threshold&&change>-threshold)return;
   const candleKey=String(k.t),prior=priceAlertedCandles.get(k.s);
   if(prior===candleKey)return;
@@ -516,6 +532,8 @@ async function runScan(){
    performance.universeMs=Date.now()-universeStarted;
   if(!exchangeInfoCache)exchangeInfoCache=info;
   const tickerMap=new Map(tickers.map(t=>[t.symbol,t]));
+  rolling24hHighs.clear();
+  for(const t of tickers){const high=Number(t.highPrice);if(t.symbol&&high>0)rolling24hHighs.set(t.symbol,high);}
   const minVol=Math.max(0,Number($('volume').value)||0);
   const eligible=info.symbols.filter(s=>s.status==='TRADING'&&s.quoteAsset==='USDT'&&s.marginAsset==='USDT').map(s=>{const t=tickerMap.get(s.symbol);return t?{symbol:s.symbol,volume:Number(t.quoteVolume)||0,change:Number(t.priceChangePercent)||0}:null}).filter(x=>x&&x.volume>=minVol);
   const eligibleCount=eligible.length;
