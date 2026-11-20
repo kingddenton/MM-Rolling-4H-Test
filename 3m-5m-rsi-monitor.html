@@ -86,7 +86,8 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  </details>
 </section>
 <section class="panel price-alert-panel">
- <div class="top"><b>WHOLE-UNIVERSE · 1M PRICE CHANGE ALERT</b><span class="note">Live candle · ±2.00% from candle open</span></div>
+ <div class="top"><b>WHOLE-UNIVERSE · 1M PRICE CHANGE ALERT</b><span class="note" id="priceAlertRule">Live candle · ±2.00% from candle open</span></div>
+ <div class="controls" style="grid-template-columns:minmax(130px,180px);margin-top:9px"><div class="field"><label for="priceChangeThreshold">PRICE CHANGE THRESHOLD (%)</label><input id="priceChangeThreshold" type="number" min="0.1" max="100" step="0.1" value="2"></div></div>
  <div class="stats"><span>Stream status: <b id="priceStreamStatus">Waiting for scanner</b></span><span>Pairs monitored: <b id="priceStreamCount">0</b></span><span>Alerts: <b id="priceAlertCount">0</b></span></div>
  <div class="wrap"><table class="price-alert-table"><thead><tr><th>TIME</th><th>SIDE</th><th>SYMBOL</th><th>1M CHANGE</th><th>PRICE</th></tr></thead><tbody id="priceAlertRows"><tr><td colspan="5" class="muted">Start scanning to monitor every eligible USDT perpetual pair.</td></tr></tbody></table></div>
  <p class="note">Uses Binance 1-minute WebSocket kline updates for every active USDT-margined perpetual pair passing the minimum 24H quote-volume filter. Alerts fire immediately when the live candle reaches +2.00% or −2.00%, once per symbol per candle.</p>
@@ -123,7 +124,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 const API='https://fapi.binance.com';
 const $=id=>document.getElementById(id);
 const SETTINGS_KEY='rsi-monitor-settings-v1';
-const settingIds=['universeMode','universeSize','topCount','bottomCount','volume','period','scannerTf','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','oi1Enabled','oi1Min','oi1Max','oi3Enabled','oi3Min','oi3Max','oi5Enabled','oi5Min','oi5Max','negativeMacdRsi','workers','refresh','continuous','buyPositive24h','sellNegative24h'];
+const settingIds=['priceChangeThreshold','universeMode','universeSize','topCount','bottomCount','volume','period','scannerTf','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','oi1Enabled','oi1Min','oi1Max','oi3Enabled','oi3Min','oi3Max','oi5Enabled','oi5Min','oi5Max','negativeMacdRsi','workers','refresh','continuous','buyPositive24h','sellNegative24h'];
 function loadSettings(){
  try{
   const saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
@@ -139,6 +140,12 @@ function saveSettings(){
  }catch(e){setStatus('Could not save settings. Check whether browser storage is available.',true)}
 }
 loadSettings();
+function updatePriceAlertRule(){
+ const value=Math.max(0.1,Math.min(100,Number($('priceChangeThreshold').value)||2));
+ $('priceAlertRule').textContent='Live candle · ±'+value.toFixed(2)+'% from candle open';
+}
+$('priceChangeThreshold').addEventListener('input',updatePriceAlertRule);
+updatePriceAlertRule();
 let running=false,loopTimer=null,scanBusy=false,stopRequested=false;
 // Short Hunter-style performance layer: cache market metadata and rolling candle history,
 // and cap all simultaneous Binance REST requests independently of coin-level workers.
@@ -177,11 +184,12 @@ function connectPriceStream(){
    const open=Number(k.o),price=Number(k.c);
    if(!(open>0)||!Number.isFinite(price))return;
    const change=(price-open)/open*100;
-   if(change<2&&change>-2)return;
+   const threshold=Math.max(0.1,Math.min(100,Number($('priceChangeThreshold').value)||2));
+   if(change<threshold&&change>-threshold)return;
    const candleKey=String(k.t),prior=priceAlertedCandles.get(k.s);
    if(prior===candleKey)return;
    priceAlertedCandles.set(k.s,candleKey);
-   const side=change>=2?'BULLISH':'BEARISH';
+   const side=change>=threshold?'BULLISH':'BEARISH';
    priceAlertHistory.unshift({time:new Date().toLocaleTimeString(),side,symbol:k.s,change,price:price.toPrecision(8)});
    if(priceAlertHistory.length>20)priceAlertHistory.length=20;
    renderPriceAlerts();
