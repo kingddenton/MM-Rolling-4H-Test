@@ -38,7 +38,6 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
   <div class="field" id="bottomCountControl" style="display:none"><label for="bottomCount">BOTTOM LOSERS</label><input id="bottomCount" type="number" min="0" step="1" value="10"></div>
   <div class="field"><label for="volume">MIN 24H QUOTE VOLUME (USDT)</label><input id="volume" type="number" min="0" step="100000" value="2000000"></div>
   <div class="field"><label for="period">RSI PERIOD</label><input id="period" type="number" min="2" max="100" value="14"></div>
-  <div class="field"><label for="scannerTf">SETUP SCANNER TIMEFRAME</label><select id="scannerTf"><option value="1m">1 minute</option><option value="3m" selected>3 minutes</option><option value="5m">5 minutes</option></select></div>
   <div class="field"><label for="min3">MINIMUM 3M RSI (≥)</label><input id="min3" type="number" min="0" max="100" step="1" value="80"></div>
   <div class="field"><label for="min5">MINIMUM 5M RSI (≥)</label><input id="min5" type="number" min="0" max="100" step="1" value="80"></div>
   <div class="field"><label for="buyRsiMin">BUY RSI MINIMUM</label><input id="buyRsiMin" type="number" min="0" max="100" step="1" value="60"></div>
@@ -98,11 +97,11 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <div class="price-direction-block"><div class="top"><b class="price-alert-bull">BULLISH</b><span class="note" id="priceBullCount">0</span></div><div class="alert-lines" id="priceBullRows"><div class="muted">Waiting for bullish 1M alerts.</div></div></div>
  <div class="price-direction-block"><div class="top"><b class="price-alert-bear">BEARISH</b><span class="note" id="priceBearCount">0</span></div><div class="alert-lines" id="priceBearRows"><div class="muted">Waiting for bearish 1M alerts.</div></div></div>
 </section>
-<section class="panel alert-card setup-alert-card"><div class="top"><b>Potential buy setups</b><span class="note" id="buyMatches">0</span></div>
+<section class="panel alert-card setup-alert-card"><div class="top"><b>Potential buy setups</b><span class="note" id="buyMatches">0</span></div><div class="field"><label for="buyTf">BUY TIMEFRAME</label><select id="buyTf"><option value="1m">1 minute</option><option value="3m" selected>3 minutes</option><option value="5m">5 minutes</option></select></div>
  <label class="direction-filter"><input id="buyPositive24h" type="checkbox"> Positive 24H change only</label>
  <div class="note" id="buySummary">—</div><div class="alert-lines" id="buyRows"><div class="muted">No potential buy setups yet.</div></div>
 </section>
-<section class="panel alert-card setup-alert-card"><div class="top"><b>Potential sell setups</b><span class="note" id="sellMatches">0</span></div>
+<section class="panel alert-card setup-alert-card"><div class="top"><b>Potential sell setups</b><span class="note" id="sellMatches">0</span></div><div class="field"><label for="sellTf">SELL TIMEFRAME</label><select id="sellTf"><option value="1m">1 minute</option><option value="3m" selected>3 minutes</option><option value="5m">5 minutes</option></select></div>
  <label class="direction-filter"><input id="sellNegative24h" type="checkbox"> Negative 24H change only</label>
  <div class="note" id="sellSummary">—</div><div class="alert-lines" id="sellRows"><div class="muted">No potential sell setups yet.</div></div>
  <div class="price-direction-block" style="margin-top:14px"><div class="top"><b class="price-alert-bear">24H HIGH REJECTION · SHORT WATCH</b><span class="note" id="highRejectCount">0/10</span></div><div class="note">Within 1% of rolling 24H high, then a completed 1M candle closes bearish.</div><div class="alert-lines" id="highRejectRows"><div class="muted">Waiting for 24H high rejection signals.</div></div></div>
@@ -126,7 +125,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 const API='https://fapi.binance.com';
 const $=id=>document.getElementById(id);
 const SETTINGS_KEY='rsi-monitor-settings-v1';
-const settingIds=['priceChangeThreshold','universeMode','universeSize','topCount','bottomCount','volume','period','scannerTf','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','oi1Enabled','oi1Min','oi1Max','oi3Enabled','oi3Min','oi3Max','oi5Enabled','oi5Min','oi5Max','negativeMacdRsi','workers','refresh','continuous','buyPositive24h','sellNegative24h'];
+const settingIds=['priceChangeThreshold','universeMode','universeSize','topCount','bottomCount','volume','period','buyTf','sellTf','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','oi1Enabled','oi1Min','oi1Max','oi3Enabled','oi3Min','oi3Max','oi5Enabled','oi5Min','oi5Max','negativeMacdRsi','workers','refresh','continuous','buyPositive24h','sellNegative24h'];
 function loadSettings(){
  try{
   const saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
@@ -558,12 +557,13 @@ async function runScan(){
   $('universeRule').textContent=mode==='ema'?'Top 50 gainers + bottom 50 losers · 15M EMA alignment':mode==='percent'?'Gainers ≥ +'+fmt(rawSize)+'% · Losers ≤ −'+fmt(rawSize)+'% (24H)':'Top '+gainers.length+' / Bottom '+losers.length+' · 24H price change';
   $('universeRows').innerHTML=universe.length?universe.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>—</td><td><b>'+x.symbol+'</b></td><td>—</td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">Not enough eligible coins to build a universe.</td></tr>';
    const period=Math.max(2,Math.min(100,Number($('period').value)||14));
-  const scannerTf=['1m','3m','5m'].includes($('scannerTf').value)?$('scannerTf').value:'3m';
+  const buyTf=['1m','3m','5m'].includes($('buyTf').value)?$('buyTf').value:'3m';
+  const sellTf=['1m','3m','5m'].includes($('sellTf').value)?$('sellTf').value:'3m';
   const workers=Math.max(1,Math.min(20,Number($('workers').value)||8));
   const min3=Math.max(0,Math.min(100,Number($('min3').value)||0));
   const min5=Math.max(0,Math.min(100,Number($('min5').value)||0));
   $('filterSummary').textContent='3M ≥ '+fmt(min3)+' · 5M ≥ '+fmt(min5);
-  setStatus('Scanning '+universe.length+' USDT-margined USDⓈ-M contracts · Potential Buy/Sell timeframe: '+scannerTf.toUpperCase()+' · RSI comparison: 3m + 5m…');
+  setStatus('Scanning '+universe.length+' USDT-margined USDⓈ-M contracts · Potential Buy: '+buyTf.toUpperCase()+' · Potential Sell: '+sellTf.toUpperCase()+' · RSI comparison: 3m + 5m…');
   const intervals=['1m','3m','5m','15m','1h','4h'];
   if(running)updateCoreMarketStream(candidateUniverse.map(x=>x.symbol));
   const timeframeJobs=universe.flatMap(item=>intervals.map(tf=>({symbol:item.symbol,tf})));
@@ -590,11 +590,11 @@ async function runScan(){
    if(fetchError||klines.some(rows=>!rows||!rows.length))return {...item,error:fetchError||'Incomplete timeframe data'};
    const closes=Object.fromEntries(intervals.map((tf,i)=>[tf,klines[i].slice(0,-1).map(x=>Number(x[4]))])); // Exclude Binance's still-forming candle: all indicators use closed candles only.
    const c1=closes['1m'],c3=closes['3m'],c5=closes['5m'],c15=closes['15m'],c1h=closes['1h'],c4h=closes['4h'];
-   const buyCloses=closes[scannerTf];
+   const buyCloses=closes[buyTf],sellCloses=closes[sellTf];
    const required=Math.max(1,Math.min(100,Number($('macdCandles').value)||5));
    const buyMin=Math.max(0,Math.min(100,Number($('buyRsiMin').value)||0));
    const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
-   return {...item,scannerTf,ema7_15:emaLast(c15,7),ema25_15:emaLast(c15,25),ema99_15:emaLast(c15,99),st15:supertrend15mDirection(klines[3].slice(0,-1)),r1:rsiWilder(c1,period),r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),buyState:potentialBuyState(buyCloses,period,buyMin,buyMax,required),sellState:potentialSellState(buyCloses,period,Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33)),Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42)),Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5))),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
+   return {...item,buyTf,sellTf,ema7_15:emaLast(c15,7),ema25_15:emaLast(c15,25),ema99_15:emaLast(c15,99),st15:supertrend15mDirection(klines[3].slice(0,-1)),r1:rsiWilder(c1,period),r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),sellRsi:rsiWilder(sellCloses,period),buyState:potentialBuyState(buyCloses,period,buyMin,buyMax,required),sellState:potentialSellState(sellCloses,period,Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33)),Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42)),Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5))),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
   });
   if(mode==='ema'){
    const valid=results.filter(x=>x&&!x.error&&Number.isFinite(x.ema7_15)&&Number.isFinite(x.ema25_15)&&Number.isFinite(x.ema99_15)&&x.ema99_15>0);
@@ -648,15 +648,15 @@ async function runScan(){
   const required=Math.max(1,Math.min(100,Number($('macdCandles').value)||5));
   const buys=newestFirst(oiFilteredGood.filter(x=>x.buyState&&x.buyState.qualifies&&(!$('buyPositive24h').checked||x.change>0)),alertFirstSeen.buys).slice(0,10);
   $('buyMatches').textContent=buys.length;
-  $('buySummary').textContent=scannerTf.toUpperCase()+' RSI '+fmt(buyMin)+'–'+fmt(buyMax)+' · enter range after bullish MACD cross and remain in range · '+required+' candles'+($('buyPositive24h').checked?' · positive 24H change only':'');
+  $('buySummary').textContent=buyTf.toUpperCase()+' RSI '+fmt(buyMin)+'–'+fmt(buyMax)+' · enter range after bullish MACD cross and remain in range · '+required+' candles'+($('buyPositive24h').checked?' · positive 24H change only':'');
   $('buyRows').innerHTML=buys.length?'<div class="setup-columns header"><span>COIN</span><span>24H %</span><span>RSI</span><span>CANDLES</span></div>'+buys.map(x=>'<div class="setup-columns data"><strong class="setup-coin '+symbolStClass(x.st15)+'">'+x.symbol+'</strong><span class="setup-value">'+(x.change>=0?'+':'')+fmt(x.change)+'%</span><span class="setup-value">'+fmt(x.buyRsi)+'</span><span class="setup-value">'+x.buyState.age+'/'+required+'</span></div>').join(''):'<div class="muted">No active potential buy setups.</div>';
   const sellMin=Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33));
   const sellMax=Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42));
   const sellRequired=Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5));
   const sells=newestFirst(oiFilteredGood.filter(x=>x.sellState&&x.sellState.qualifies&&(!$('sellNegative24h').checked||x.change<0)),alertFirstSeen.sells).slice(0,10);
   $('sellMatches').textContent=sells.length;
-  $('sellSummary').textContent=scannerTf.toUpperCase()+' RSI '+fmt(sellMin)+'–'+fmt(sellMax)+' · enter range after bearish MACD cross and remain in range · '+sellRequired+' candles'+($('sellNegative24h').checked?' · negative 24H change only':'');
-  $('sellRows').innerHTML=sells.length?'<div class="setup-columns header"><span>COIN</span><span>24H %</span><span>RSI</span><span>CANDLES</span></div>'+sells.map(x=>'<div class="setup-columns data"><strong class="setup-coin '+symbolStClass(x.st15)+'">'+x.symbol+'</strong><span class="setup-value">'+(x.change>=0?'+':'')+fmt(x.change)+'%</span><span class="setup-value">'+fmt(x.buyRsi)+'</span><span class="setup-value">'+x.sellState.age+'/'+sellRequired+'</span></div>').join(''):'<div class="muted">No active potential sell setups.</div>';
+  $('sellSummary').textContent=sellTf.toUpperCase()+' RSI '+fmt(sellMin)+'–'+fmt(sellMax)+' · enter range after bearish MACD cross and remain in range · '+sellRequired+' candles'+($('sellNegative24h').checked?' · negative 24H change only':'');
+  $('sellRows').innerHTML=sells.length?'<div class="setup-columns header"><span>COIN</span><span>24H %</span><span>RSI</span><span>CANDLES</span></div>'+sells.map(x=>'<div class="setup-columns data"><strong class="setup-coin '+symbolStClass(x.st15)+'">'+x.symbol+'</strong><span class="setup-value">'+(x.change>=0?'+':'')+fmt(x.change)+'%</span><span class="setup-value">'+fmt(x.sellRsi)+'</span><span class="setup-value">'+x.sellState.age+'/'+sellRequired+'</span></div>').join(''):'<div class="muted">No active potential sell setups.</div>';
   const rawNegativeMacdThreshold=Number($('negativeMacdRsi').value);
   const negativeMacdThreshold=Number.isFinite(rawNegativeMacdThreshold)?Math.max(0,Math.min(100,rawNegativeMacdThreshold)):70;
   $('negativeMacdRule').textContent='5M RSI at least '+negativeMacdThreshold+' AND MACD histogram below zero';
