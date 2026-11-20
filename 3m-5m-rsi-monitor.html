@@ -91,6 +91,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <div class="stats"><span>Stream status: <b id="priceStreamStatus">Waiting for scanner</b></span><span>Pairs monitored: <b id="priceStreamCount">0</b></span><span>Alerts: <b id="priceAlertCount">0</b></span></div>
  <div class="stats"><span>1M updates received: <b id="priceUpdateCount">0</b></span><span>Last update: <b id="priceLastUpdate">—</b></span><span>Latest movement: <b id="priceLatestMove">—</b></span><span>Applied threshold: <b id="priceAppliedThreshold">0.10%</b></span></div>
  <div class="stats"><span>Raw WS messages: <b id="priceRawMessageCount">0</b></span><span>Processing errors: <b id="priceProcessingErrors">0</b></span></div>
+ <div class="stats"><span>Socket events: <b id="priceSocketEvents">—</b></span><span>Last close/error: <b id="priceSocketIssue">—</b></span><span>Stream check: <b id="priceSocketCheck">Waiting</b></span></div>
  <p class="note">First raw message: <code id="priceFirstRawMessage">Waiting for first message…</code></p>
  <div class="wrap"><table class="price-alert-table"><thead><tr><th>TIME</th><th>SIDE</th><th>SYMBOL</th><th>1M CHANGE</th><th>PRICE</th></tr></thead><tbody id="priceAlertRows"><tr><td colspan="5" class="muted">Start scanning to monitor every eligible USDT perpetual pair.</td></tr></tbody></table></div>
  <p class="note" id="priceAlertExplanation">Uses Binance 1-minute WebSocket kline updates for every active USDT-margined perpetual pair passing the minimum 24H quote-volume filter. Alerts fire immediately at the configured positive or negative threshold, once per symbol per candle.</p>
@@ -164,7 +165,7 @@ const oiSamples=new Map();
 let requestConcurrency=8,activeRequests=0,requestWaiters=[],rateLimitUntil=0;
 const performance={restRequests:0,cacheHits:0,cacheMisses:0,activeWorkers:0,peakWorkers:0,history:[],last:null,coinTimes:new Map(),startedJobs:0,finishedJobs:0,checkedJobs:0,failures:0,startedJobKeys:new Set(),totalJobs:0,scanStarted:0,universeMs:0};
 let priceWs=new Map(),priceWsSymbols=[],priceWsSymbolsKey='',priceWsRetry=1000,priceWsStopped=true,priceWsOpen=0;
-const priceAlertedCandles=new Map(),priceAlertHistory=[];let priceUpdateCount=0,priceLastUpdate='—',priceLatestMove='—';let priceRawMessageCount=0,priceProcessingErrors=0,priceFirstRawMessage='';
+const priceAlertedCandles=new Map(),priceAlertHistory=[];let priceUpdateCount=0,priceLastUpdate='—',priceLatestMove='—';let priceRawMessageCount=0,priceProcessingErrors=0,priceFirstRawMessage='';let priceSocketEvents=[],priceSocketIssues=[];
 function renderPriceAlerts(){
  $('priceAlertCount').textContent=String(priceAlertHistory.length);
  $('priceAlertRows').innerHTML=priceAlertHistory.length?priceAlertHistory.map(a=>'<tr><td>'+a.time+'</td><td class="'+(a.side==='BULLISH'?'price-alert-bull':'price-alert-bear')+'">'+a.side+'</td><td><b>'+a.symbol+'</b></td><td class="'+(a.side==='BULLISH'?'price-alert-bull':'price-alert-bear')+'">'+(a.change>=0?'+':'')+a.change.toFixed(2)+'%</td><td>'+a.price+'</td></tr>').join(''):'<tr><td colspan="5" class="muted">No 1-minute price-change alerts yet.</td></tr>';
@@ -218,20 +219,36 @@ function connectPriceChunk(index){
  let wasOpen=false;
  priceWs.set(index,ws);
  updatePriceStreamStatus();
- ws.onopen=()=>{if(priceWs.get(index)!==ws)return;wasOpen=true;priceWsRetry=1000;priceWsOpen++;updatePriceStreamStatus()};
+ ws.onopen=()=>{
+  if(priceWs.get(index)!==ws)return;
+  wasOpen=true;priceWsRetry=1000;priceWsOpen++;
+  priceSocketEvents[index]='open';
+  $('priceSocketEvents').textContent=priceSocketEvents.filter(Boolean).length+'/'+total+' open';
+  $('priceSocketCheck').textContent='Socket open; waiting for market data';
+  updatePriceStreamStatus();
+  setTimeout(()=>{
+   if(priceWs.get(index)===ws&&ws.readyState===WebSocket.OPEN&&priceRawMessageCount===0)$('priceSocketCheck').textContent='OPEN BUT NO DATA after 10s';
+  },10000);
+ };
  ws.onmessage=event=>{
   if(priceWs.get(index)!==ws)return;
   priceRawMessageCount++;
   $('priceRawMessageCount').textContent=String(priceRawMessageCount);
-  if(!priceFirstRawMessage){
-   priceFirstRawMessage=String(event.data).slice(0,240);
-   $('priceFirstRawMessage').textContent=priceFirstRawMessage;
-  }
+  $('priceSocketCheck').textContent='Receiving data';
+  if(!priceFirstRawMessage){priceFirstRawMessage=String(event.data).slice(0,240);$('priceFirstRawMessage').textContent=priceFirstRawMessage;}
   handlePriceStreamMessage(event);
  };
- ws.onerror=()=>{if(priceWs.get(index)===ws)updatePriceStreamStatus()};
- ws.onclose=()=>{
+ ws.onerror=()=>{
   if(priceWs.get(index)!==ws)return;
+  priceSocketIssues[index]='error event (browser hides details)';
+  $('priceSocketIssue').textContent='Chunk '+(index+1)+': '+priceSocketIssues[index];
+  $('priceSocketCheck').textContent='Socket error';
+  updatePriceStreamStatus();
+ };
+ ws.onclose=event=>{
+  if(priceWs.get(index)!==ws)return;
+  priceSocketIssues[index]='close '+event.code+(event.reason?' · '+event.reason:' · no reason');
+  $('priceSocketIssue').textContent='Chunk '+(index+1)+': '+priceSocketIssues[index];
   priceWs.delete(index);if(wasOpen)priceWsOpen=Math.max(0,priceWsOpen-1);
   updatePriceStreamStatus();
   if(priceWsStopped||!running)return;
