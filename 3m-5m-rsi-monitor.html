@@ -22,7 +22,7 @@ button{cursor:pointer;font-weight:750;background:#1d4ed8;border-color:#2563eb}bu
 .status{color:var(--muted);font-size:12px;margin-top:10px}.stats{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:12px}.stats b{color:var(--text)}
 table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}th{color:var(--muted);font-size:11px;position:sticky;top:0;background:var(--panel)}
 .wrap{overflow:auto}.pill{display:inline-block;border-radius:20px;padding:3px 8px;font-size:11px;font-weight:800}.low{color:#06281c;background:var(--green)}.high{color:#3b0711;background:var(--red)}.mid{color:#3a2a05;background:#fcd34d}
-.monitor-panel{margin:14px 0}.perf-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}.perf-metric{background:#0c1625;border:1px solid var(--line);border-radius:8px;padding:9px;min-width:0}.perf-metric span{display:block;color:var(--muted);font-size:11px}.perf-metric strong{display:block;font-size:16px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.perf-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}.perf-table th,.perf-table td{text-align:left;padding:6px;border-top:1px solid var(--line)}.perf-table th{color:var(--muted)}@media(max-width:650px){.perf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}.num{font-weight:800}.symbol-st-bull{color:var(--green)!important}.symbol-st-bear{color:var(--red)!important}.symbol-st-neutral{color:var(--text)!important}.muted{color:var(--muted)}.error{color:var(--red)}.note{font-size:12px;color:var(--muted)}
+.monitor-panel{margin:14px 0}.perf-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}.perf-metric{background:#0c1625;border:1px solid var(--line);border-radius:8px;padding:9px;min-width:0}.perf-metric span{display:block;color:var(--muted);font-size:11px}.perf-metric strong{display:block;font-size:16px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.perf-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}.perf-table th,.perf-table td{text-align:left;padding:6px;border-top:1px solid var(--line)}.perf-table th{color:var(--muted)}@media(max-width:650px){.perf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}.price-alert-bull{color:var(--green);font-weight:800}.price-alert-bear{color:var(--red);font-weight:800}.price-alert-panel .stats{margin:8px 0}.price-alert-table{min-width:420px}.price-alert-table td,.price-alert-table th{padding:8px}.num{font-weight:800}.symbol-st-bull{color:var(--green)!important}.symbol-st-bear{color:var(--red)!important}.symbol-st-neutral{color:var(--text)!important}.muted{color:var(--muted)}.error{color:var(--red)}.note{font-size:12px;color:var(--muted)}
 @media(max-width:760px){.setup-grid{grid-template-columns:1fr}}
 @media(max-width:600px){main{padding:11px}h1{font-size:19px}.panel{padding:11px}}
 </style>
@@ -85,6 +85,12 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
   <p class="note">The universe is rebuilt on every scan from active USDT-quoted, USDT-margined perpetual contracts that meet the minimum 24H quote-volume filter. Threshold mode includes every eligible gainer at or above +X% and every eligible loser at or below −X%. Top X / Bottom X mode uses independently editable counts. After combining both sides, the scanner keeps at most the 100 contracts with the largest absolute 24H changes, then displays them in ascending 24H-change order.</p>
  </details>
 </section>
+<section class="panel price-alert-panel">
+ <div class="top"><b>WHOLE-UNIVERSE · 1M PRICE CHANGE ALERT</b><span class="note">Live candle · ±2.00% from candle open</span></div>
+ <div class="stats"><span>Stream status: <b id="priceStreamStatus">Waiting for scanner</b></span><span>Pairs monitored: <b id="priceStreamCount">0</b></span><span>Alerts: <b id="priceAlertCount">0</b></span></div>
+ <div class="wrap"><table class="price-alert-table"><thead><tr><th>TIME</th><th>SIDE</th><th>SYMBOL</th><th>1M CHANGE</th><th>PRICE</th></tr></thead><tbody id="priceAlertRows"><tr><td colspan="5" class="muted">Start scanning to monitor every eligible USDT perpetual pair.</td></tr></tbody></table></div>
+ <p class="note">Uses Binance 1-minute WebSocket kline updates for every active USDT-margined perpetual pair passing the minimum 24H quote-volume filter. Alerts fire immediately when the live candle reaches +2.00% or −2.00%, once per symbol per candle.</p>
+</section>
 <section class="panel">
  <div class="top"><b>RSI filter matches</b><span class="note">Both conditions must pass: 3M RSI ≥ threshold AND 5M RSI ≥ threshold</span></div>
  <div class="stats" style="margin:8px 0"><span>Matching coins: <b id="matches">0</b></span><span>Filter: <b id="filterSummary">3M ≥ 70 · 5M ≥ 50</b></span></div>
@@ -141,6 +147,67 @@ const candleCache=new Map();
 const oiSamples=new Map();
 let requestConcurrency=8,activeRequests=0,requestWaiters=[],rateLimitUntil=0;
 const performance={restRequests:0,cacheHits:0,cacheMisses:0,activeWorkers:0,peakWorkers:0,history:[],last:null,coinTimes:new Map(),startedJobs:0,finishedJobs:0,checkedJobs:0,failures:0,startedJobKeys:new Set(),totalJobs:0,scanStarted:0,universeMs:0};
+let priceWs=null,priceWsSymbols=[],priceWsSymbolsKey='',priceWsRetry=1000,priceWsReconnectTimer=null,priceWsStopped=true;
+const priceAlertedCandles=new Map(),priceAlertHistory=[];
+function renderPriceAlerts(){
+ $('priceAlertCount').textContent=String(priceAlertHistory.length);
+ $('priceAlertRows').innerHTML=priceAlertHistory.length?priceAlertHistory.map(a=>'<tr><td>'+a.time+'</td><td class="'+(a.side==='BULLISH'?'price-alert-bull':'price-alert-bear')+'">'+a.side+'</td><td><b>'+a.symbol+'</b></td><td class="'+(a.side==='BULLISH'?'price-alert-bull':'price-alert-bear')+'">'+(a.change>=0?'+':'')+a.change.toFixed(2)+'%</td><td>'+a.price+'</td></tr>').join(''):'<tr><td colspan="5" class="muted">No 1-minute ±2% moves detected yet.</td></tr>';
+}
+function stopPriceStream(){
+ priceWsStopped=true;
+ if(priceWsReconnectTimer){clearTimeout(priceWsReconnectTimer);priceWsReconnectTimer=null}
+ if(priceWs){const old=priceWs;priceWs=null;old.onclose=null;old.onerror=null;try{old.close()}catch(e){}}
+ $('priceStreamStatus').textContent='Stopped';
+ $('priceStreamCount').textContent='0';
+}
+function connectPriceStream(){
+ if(priceWsStopped||!running||!priceWsSymbols.length)return;
+ if(priceWs&& (priceWs.readyState===WebSocket.OPEN||priceWs.readyState===WebSocket.CONNECTING))return;
+ const streams=priceWsSymbols.map(s=>s.toLowerCase()+'@kline_1m');
+ if(streams.length>1024){$('priceStreamStatus').textContent='Too many streams for one connection';return}
+ const ws=new WebSocket('wss://fstream.binance.com/stream?streams='+streams.join('/'));
+ priceWs=ws;
+ $('priceStreamStatus').textContent='Connecting…';
+ ws.onopen=()=>{if(priceWs!==ws)return;priceWsRetry=1000;$('priceStreamStatus').textContent='Connected · live';$('priceStreamCount').textContent=String(priceWsSymbols.length)};
+ ws.onmessage=event=>{
+  if(priceWs!==ws)return;
+  try{
+   const payload=JSON.parse(event.data),k=payload.data&&payload.data.k;
+   if(!k||k.i!=='1m')return;
+   const open=Number(k.o),price=Number(k.c);
+   if(!(open>0)||!Number.isFinite(price))return;
+   const change=(price-open)/open*100;
+   if(change<2&&change>-2)return;
+   const candleKey=String(k.t),prior=priceAlertedCandles.get(k.s);
+   if(prior===candleKey)return;
+   priceAlertedCandles.set(k.s,candleKey);
+   const side=change>=2?'BULLISH':'BEARISH';
+   priceAlertHistory.unshift({time:new Date().toLocaleTimeString(),side,symbol:k.s,change,price:price.toPrecision(8)});
+   if(priceAlertHistory.length>20)priceAlertHistory.length=20;
+   renderPriceAlerts();
+  }catch(e){/* Ignore malformed stream messages; the next update will be processed. */}
+ };
+ ws.onerror=()=>{if(priceWs===ws)$('priceStreamStatus').textContent='Connection error · reconnecting'};
+ ws.onclose=()=>{
+  if(priceWs===ws)priceWs=null;
+  if(priceWsStopped||!running)return;
+  $('priceStreamStatus').textContent='Disconnected · reconnecting';
+  if(priceWsReconnectTimer)clearTimeout(priceWsReconnectTimer);
+  priceWsReconnectTimer=setTimeout(()=>{priceWsReconnectTimer=null;connectPriceStream()},priceWsRetry);
+  priceWsRetry=Math.min(priceWsRetry*2,30000);
+ };
+}
+function updatePriceStream(symbols){
+ const next=[...new Set(symbols)].sort(),key=next.join(',');
+ if(key===priceWsSymbolsKey&&priceWs&&(priceWs.readyState===WebSocket.OPEN||priceWs.readyState===WebSocket.CONNECTING))return;
+ priceWsSymbols=next;priceWsSymbolsKey=key;
+ if(priceWs){const old=priceWs;priceWs=null;old.onclose=null;old.onerror=null;try{old.close()}catch(e){}}
+ if(priceWsReconnectTimer){clearTimeout(priceWsReconnectTimer);priceWsReconnectTimer=null}
+ $('priceStreamCount').textContent=String(next.length);
+ if(!next.length){$('priceStreamStatus').textContent='No eligible pairs';return}
+ priceWsRetry=1000;connectPriceStream();
+}
+
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function acquireRequestSlot(){
  while(Date.now()<rateLimitUntil)await sleep(Math.min(1000,rateLimitUntil-Date.now()));
@@ -344,6 +411,7 @@ async function runScan(){
   const minVol=Math.max(0,Number($('volume').value)||0);
   const eligible=info.symbols.filter(s=>s.status==='TRADING'&&s.quoteAsset==='USDT'&&s.marginAsset==='USDT').map(s=>{const t=tickerMap.get(s.symbol);return t?{symbol:s.symbol,volume:Number(t.quoteVolume)||0,change:Number(t.priceChangePercent)||0}:null}).filter(x=>x&&x.volume>=minVol);
   const eligibleCount=eligible.length;
+  if(running){priceWsStopped=false;updatePriceStream(eligible.map(x=>x.symbol))}
   $('eligible').textContent=eligibleCount;
   const ranked=[...eligible].sort((a,b)=>b.change-a.change);
   const rawSize=Math.max(1,Number($('universeSize').value)||10);
@@ -493,9 +561,9 @@ updateUniverseControls();
 function pill(v){const cls=v<30?'low':v>70?'high':'mid';return '<span class="pill '+cls+'">'+fmt(v)+'</span>'}
 function oiPct(v){if(!Number.isFinite(v))return '<span class="muted">Warming</span>';const sign=v>0?'+':'';return '<span class="num">'+sign+v.toFixed(2)+'%</span>'}
 $('saveSettings').addEventListener('click',saveSettings);
-$('start').addEventListener('click',()=>{if(running)return;running=true;stopRequested=false;setRunningButton(true);clearTimeout(loopTimer);runScan()});
+$('start').addEventListener('click',()=>{if(running)return;running=true;stopRequested=false;priceWsStopped=false;setRunningButton(true);clearTimeout(loopTimer);runScan()});
 $('once').addEventListener('click',()=>{if(running){setStatus('Stop automatic scanning before using Scan once.');return}stopRequested=false;runScan()});
-$('stop').addEventListener('click',()=>{running=false;stopRequested=true;setRunningButton(false);clearTimeout(loopTimer);setStatus(scanBusy?'Stop requested; finishing current requests…':'Scanner stopped.')});
+$('stop').addEventListener('click',()=>{running=false;stopRequested=true;stopPriceStream();setRunningButton(false);clearTimeout(loopTimer);setStatus(scanBusy?'Stop requested; finishing current requests…':'Scanner stopped.')});
 $('refresh').addEventListener('change',()=>{if(running&&!scanBusy){clearTimeout(loopTimer);const sec=Number($('refresh').value)||0;if(sec)loopTimer=setTimeout(runScan,sec*1000);else{running=false;setRunningButton(false)}}});
 })();
 </script></body></html>
