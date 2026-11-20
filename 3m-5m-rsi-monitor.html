@@ -166,7 +166,7 @@ const performance={restRequests:0,cacheHits:0,cacheMisses:0,activeWorkers:0,peak
 let priceWs=new Map(),priceWsSymbols=[],priceWsSymbolsKey='',priceWsRetry=1000,priceWsStopped=true,priceWsOpen=0;
 const priceAlertedCandles=new Map(),priceAlertHistory=[];let priceUpdateCount=0,priceLastUpdate='—',priceLatestMove='—';let priceRawMessageCount=0,priceProcessingErrors=0,priceFirstRawMessage='';let priceSocketEvents=[],priceSocketIssues=[];
 function renderPriceAlerts(){
- const bullish=priceAlertHistory.filter(a=>a.side==='BULLISH'),bearish=priceAlertHistory.filter(a=>a.side==='BEARISH');
+ const bullish=priceAlertHistory.filter(a=>a.side==='BULLISH').slice(0,10),bearish=priceAlertHistory.filter(a=>a.side==='BEARISH').slice(0,10);
  $('priceAlertCount').textContent=String(priceAlertHistory.length);
  $('priceCombinedCount').textContent=String(priceAlertHistory.length);
  $('priceBullCount').textContent=String(bullish.length)+' alerts';
@@ -201,7 +201,8 @@ function handlePriceStreamMessage(event){
   priceAlertedCandles.set(k.s,candleKey);
   const side=change>=threshold?'BULLISH':'BEARISH';
   priceAlertHistory.unshift({time:priceLastUpdate,side,symbol:k.s,change,price:price.toPrecision(8)});
-  if(priceAlertHistory.length>20)priceAlertHistory.length=20;
+  const sameSide=priceAlertHistory.filter(a=>a.side===side);
+  if(sameSide.length>10){const oldestSameSide=sameSide[sameSide.length-1];const oldestIndex=priceAlertHistory.lastIndexOf(oldestSameSide);if(oldestIndex!==-1)priceAlertHistory.splice(oldestIndex,1);}
   renderPriceAlerts();
  }catch(e){
   priceProcessingErrors++;
