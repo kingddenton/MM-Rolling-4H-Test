@@ -154,68 +154,74 @@ const candleCache=new Map();
 const oiSamples=new Map();
 let requestConcurrency=8,activeRequests=0,requestWaiters=[],rateLimitUntil=0;
 const performance={restRequests:0,cacheHits:0,cacheMisses:0,activeWorkers:0,peakWorkers:0,history:[],last:null,coinTimes:new Map(),startedJobs:0,finishedJobs:0,checkedJobs:0,failures:0,startedJobKeys:new Set(),totalJobs:0,scanStarted:0,universeMs:0};
-let priceWs=null,priceWsSymbols=[],priceWsSymbolsKey='',priceWsRetry=1000,priceWsReconnectTimer=null,priceWsStopped=true;
+let priceWs=new Map(),priceWsSymbols=[],priceWsSymbolsKey='',priceWsRetry=1000,priceWsStopped=true,priceWsOpen=0;
 const priceAlertedCandles=new Map(),priceAlertHistory=[];
 function renderPriceAlerts(){
  $('priceAlertCount').textContent=String(priceAlertHistory.length);
- $('priceAlertRows').innerHTML=priceAlertHistory.length?priceAlertHistory.map(a=>'<tr><td>'+a.time+'</td><td class="'+(a.side==='BULLISH'?'price-alert-bull':'price-alert-bear')+'">'+a.side+'</td><td><b>'+a.symbol+'</b></td><td class="'+(a.side==='BULLISH'?'price-alert-bull':'price-alert-bear')+'">'+(a.change>=0?'+':'')+a.change.toFixed(2)+'%</td><td>'+a.price+'</td></tr>').join(''):'<tr><td colspan="5" class="muted">No 1-minute ±2% moves detected yet.</td></tr>';
+ $('priceAlertRows').innerHTML=priceAlertHistory.length?priceAlertHistory.map(a=>'<tr><td>'+a.time+'</td><td class="'+(a.side==='BULLISH'?'price-alert-bull':'price-alert-bear')+'">'+a.side+'</td><td><b>'+a.symbol+'</b></td><td class="'+(a.side==='BULLISH'?'price-alert-bull':'price-alert-bear')+'">'+(a.change>=0?'+':'')+a.change.toFixed(2)+'%</td><td>'+a.price+'</td></tr>').join(''):'<tr><td colspan="5" class="muted">No 1-minute price-change alerts yet.</td></tr>';
+}
+function updatePriceStreamStatus(){
+ const total=Math.ceil(priceWsSymbols.length/40);
+ $('priceStreamStatus').textContent=priceWsStopped?'Stopped':priceWsOpen===total&&total?'Connected · live ('+priceWsOpen+'/'+total+')':priceWsOpen?'Connected · '+priceWsOpen+'/'+total+' streams':'Connecting · 0/'+total+' streams';
+ $('priceStreamCount').textContent=String(priceWsSymbols.length);
+}
+function handlePriceStreamMessage(event){
+ try{
+  const payload=JSON.parse(event.data),k=payload.data&&payload.data.k;
+  if(!k||k.i!=='1m')return;
+  const open=Number(k.o),price=Number(k.c);
+  if(!(open>0)||!Number.isFinite(price))return;
+  const change=(price-open)/open*100;
+  const threshold=Math.max(0.1,Math.min(100,Number($('priceChangeThreshold').value)||2));
+  if(change<threshold&&change>-threshold)return;
+  const candleKey=String(k.t),prior=priceAlertedCandles.get(k.s);
+  if(prior===candleKey)return;
+  priceAlertedCandles.set(k.s,candleKey);
+  const side=change>=threshold?'BULLISH':'BEARISH';
+  priceAlertHistory.unshift({time:new Date().toLocaleTimeString(),side,symbol:k.s,change,price:price.toPrecision(8)});
+  if(priceAlertHistory.length>20)priceAlertHistory.length=20;
+  renderPriceAlerts();
+ }catch(e){/* Ignore malformed stream messages; the next update will be processed. */}
+}
+function closePriceSockets(){
+ for(const ws of priceWs.values()){ws.onclose=null;ws.onerror=null;try{ws.close()}catch(e){}}
+ priceWs.clear();priceWsOpen=0;
 }
 function stopPriceStream(){
- priceWsStopped=true;
- if(priceWsReconnectTimer){clearTimeout(priceWsReconnectTimer);priceWsReconnectTimer=null}
- if(priceWs){const old=priceWs;priceWs=null;old.onclose=null;old.onerror=null;try{old.close()}catch(e){}}
- $('priceStreamStatus').textContent='Stopped';
- $('priceStreamCount').textContent='0';
+ priceWsStopped=true;closePriceSockets();updatePriceStreamStatus();
 }
-function connectPriceStream(){
- if(priceWsStopped||!running||!priceWsSymbols.length)return;
- if(priceWs&& (priceWs.readyState===WebSocket.OPEN||priceWs.readyState===WebSocket.CONNECTING))return;
- const streams=priceWsSymbols.map(s=>s.toLowerCase()+'@kline_1m');
- if(streams.length>1024){$('priceStreamStatus').textContent='Too many streams for one connection';return}
+function connectPriceChunk(index){
+ if(priceWsStopped||!running)return;
+ const symbols=priceWsSymbols.slice(index*40,(index+1)*40);
+ if(!symbols.length)return;
+ const streams=symbols.map(s=>s.toLowerCase()+'@kline_1m');
  const ws=new WebSocket('wss://fstream.binance.com/stream?streams='+streams.join('/'));
- priceWs=ws;
- $('priceStreamStatus').textContent='Connecting…';
- ws.onopen=()=>{if(priceWs!==ws)return;priceWsRetry=1000;$('priceStreamStatus').textContent='Connected · live';$('priceStreamCount').textContent=String(priceWsSymbols.length)};
- ws.onmessage=event=>{
-  if(priceWs!==ws)return;
-  try{
-   const payload=JSON.parse(event.data),k=payload.data&&payload.data.k;
-   if(!k||k.i!=='1m')return;
-   const open=Number(k.o),price=Number(k.c);
-   if(!(open>0)||!Number.isFinite(price))return;
-   const change=(price-open)/open*100;
-   const threshold=Math.max(0.1,Math.min(100,Number($('priceChangeThreshold').value)||2));
-   if(change<threshold&&change>-threshold)return;
-   const candleKey=String(k.t),prior=priceAlertedCandles.get(k.s);
-   if(prior===candleKey)return;
-   priceAlertedCandles.set(k.s,candleKey);
-   const side=change>=threshold?'BULLISH':'BEARISH';
-   priceAlertHistory.unshift({time:new Date().toLocaleTimeString(),side,symbol:k.s,change,price:price.toPrecision(8)});
-   if(priceAlertHistory.length>20)priceAlertHistory.length=20;
-   renderPriceAlerts();
-  }catch(e){/* Ignore malformed stream messages; the next update will be processed. */}
- };
- ws.onerror=()=>{if(priceWs===ws)$('priceStreamStatus').textContent='Connection error · reconnecting'};
+ priceWs.set(index,ws);
+ updatePriceStreamStatus();
+ ws.onopen=()=>{if(priceWs.get(index)!==ws)return;priceWsRetry=1000;priceWsOpen++;updatePriceStreamStatus()};
+ ws.onmessage=event=>{if(priceWs.get(index)===ws)handlePriceStreamMessage(event)};
+ ws.onerror=()=>{if(priceWs.get(index)===ws)updatePriceStreamStatus()};
  ws.onclose=()=>{
-  if(priceWs===ws)priceWs=null;
+  if(priceWs.get(index)!==ws)return;
+  priceWs.delete(index);if(ws.readyState===WebSocket.OPEN)priceWsOpen=Math.max(0,priceWsOpen-1);
+  updatePriceStreamStatus();
   if(priceWsStopped||!running)return;
-  $('priceStreamStatus').textContent='Disconnected · reconnecting';
-  if(priceWsReconnectTimer)clearTimeout(priceWsReconnectTimer);
-  priceWsReconnectTimer=setTimeout(()=>{priceWsReconnectTimer=null;connectPriceStream()},priceWsRetry);
-  priceWsRetry=Math.min(priceWsRetry*2,30000);
+  const delay=priceWsRetry;priceWsRetry=Math.min(priceWsRetry*2,30000);
+  setTimeout(()=>connectPriceChunk(index),delay);
  };
 }
 function updatePriceStream(symbols){
  const next=[...new Set(symbols)].sort(),key=next.join(',');
- if(key===priceWsSymbolsKey&&priceWs&&(priceWs.readyState===WebSocket.OPEN||priceWs.readyState===WebSocket.CONNECTING))return;
+ const total=Math.ceil(next.length/40);
+ if(key===priceWsSymbolsKey&&priceWs.size===total&&[...priceWs.values()].every(ws=>ws.readyState===WebSocket.OPEN||ws.readyState===WebSocket.CONNECTING))return;
  priceWsSymbols=next;priceWsSymbolsKey=key;
- if(priceWs){const old=priceWs;priceWs=null;old.onclose=null;old.onerror=null;try{old.close()}catch(e){}}
- if(priceWsReconnectTimer){clearTimeout(priceWsReconnectTimer);priceWsReconnectTimer=null}
+ closePriceSockets();
  $('priceStreamCount').textContent=String(next.length);
  if(!next.length){$('priceStreamStatus').textContent='No eligible pairs';return}
- priceWsRetry=1000;connectPriceStream();
+ if(total>20){$('priceStreamStatus').textContent='Universe exceeds 800-pair stream safety limit';return}
+ priceWsRetry=1000;
+ for(let i=0;i<total;i++)connectPriceChunk(i);
 }
-
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function acquireRequestSlot(){
  while(Date.now()<rateLimitUntil)await sleep(Math.min(1000,rateLimitUntil-Date.now()));
