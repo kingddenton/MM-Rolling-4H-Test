@@ -95,13 +95,13 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <div class="top"><b>Potential buy setups · RSI + MACD</b></div>
  <label class="direction-filter"><input id="buyPositive24h" type="checkbox"> Show only coins with positive 24H price change (&gt; 0%)</label>
  <div class="stats" style="margin:8px 0"><span>Qualified setups: <b id="buyMatches">0</b></span><span>Rule: <b id="buySummary">3M RSI 58–63 · MACD green · expires after 5 candles</b></span></div>
- <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>TIMEFRAME</th><th>SETUP RSI</th><th>1M RSI</th><th>3M RSI</th><th>5M RSI</th><th>QUALIFICATION CANDLES</th></tr></thead><tbody id="buyRows"><tr><td colspan="8" class="muted">No potential buy setups yet.</td></tr></tbody></table></div>
+ <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>TIMEFRAME</th><th>SETUP RSI</th><th>QUALIFICATION CANDLES</th></tr></thead><tbody id="buyRows"><tr><td colspan="5" class="muted">No potential buy setups yet.</td></tr></tbody></table></div>
 </section>
 <section class="panel">
  <div class="top"><b>Potential sell setups · RSI + MACD</b></div>
  <label class="direction-filter"><input id="sellNegative24h" type="checkbox"> Show only coins with negative 24H price change (&lt; 0%)</label>
  <div class="stats" style="margin:8px 0"><span>Qualified setups: <b id="sellMatches">0</b></span><span>Rule: <b id="sellSummary">3M RSI 33–42 · MACD red · expires after 5 candles</b></span></div>
- <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>TIMEFRAME</th><th>SETUP RSI</th><th>1M RSI</th><th>3M RSI</th><th>5M RSI</th><th>QUALIFICATION CANDLES</th></tr></thead><tbody id="sellRows"><tr><td colspan="8" class="muted">No potential sell setups yet.</td></tr></tbody></table></div>
+ <div class="wrap"><table><thead><tr><th>SYMBOL</th><th>24H CHANGE</th><th>TIMEFRAME</th><th>SETUP RSI</th><th>1M RSI</th><th>3M RSI</th><th>5M RSI</th><th>QUALIFICATION CANDLES</th></tr></thead><tbody id="sellRows"><tr><td colspan="5" class="muted">No potential sell setups yet.</td></tr></tbody></table></div>
 </section>
 </div>
 <section class="panel">
@@ -444,14 +444,14 @@ async function runScan(){
   const buys=newestFirst(oiFilteredGood.filter(x=>x.buyState&&x.buyState.qualifies&&(!$('buyPositive24h').checked||x.change>0)),alertFirstSeen.buys).slice(0,10);
   $('buyMatches').textContent=buys.length;
   $('buySummary').textContent=scannerTf.toUpperCase()+' RSI '+fmt(buyMin)+'–'+fmt(buyMax)+' · enter range after bullish MACD cross and remain in range · '+required+' candles'+($('buyPositive24h').checked?' · positive 24H change only':'');
-  $('buyRows').innerHTML=buys.length?buys.map(x=>'<tr><td><b class="'+symbolStClass(x.st15)+'">'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+x.scannerTf.toUpperCase()+'</td><td>'+pill(x.buyRsi)+'</td><td>'+pill(x.r1)+'</td><td>'+pill(x.r3)+'</td><td>'+pill(x.r5)+'</td><td><span class="pill low">'+x.buyState.age+'/'+required+'</span></td></tr>').join(''):'<tr><td colspan="8" class="muted">No active potential buy setups.</td></tr>';
+  $('buyRows').innerHTML=buys.length?buys.map(x=>'<tr><td><b class="'+symbolStClass(x.st15)+'">'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+x.scannerTf.toUpperCase()+'</td><td>'+pill(x.buyRsi)+'</td><td><span class="pill low">'+x.buyState.age+'/'+required+'</span></td></tr>').join(''):'<tr><td colspan="8" class="muted">No active potential buy setups.</td></tr>';
   const sellMin=Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33));
   const sellMax=Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42));
   const sellRequired=Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5));
   const sells=newestFirst(oiFilteredGood.filter(x=>x.sellState&&x.sellState.qualifies&&(!$('sellNegative24h').checked||x.change<0)),alertFirstSeen.sells).slice(0,10);
   $('sellMatches').textContent=sells.length;
   $('sellSummary').textContent=scannerTf.toUpperCase()+' RSI '+fmt(sellMin)+'–'+fmt(sellMax)+' · enter range after bearish MACD cross and remain in range · '+sellRequired+' candles'+($('sellNegative24h').checked?' · negative 24H change only':'');
-  $('sellRows').innerHTML=sells.length?sells.map(x=>'<tr><td><b class="'+symbolStClass(x.st15)+'">'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+x.scannerTf.toUpperCase()+'</td><td>'+pill(x.buyRsi)+'</td><td>'+pill(x.r1)+'</td><td>'+pill(x.r3)+'</td><td>'+pill(x.r5)+'</td><td><span class="pill high">'+x.sellState.age+'/'+sellRequired+'</span></td></tr>').join(''):'<tr><td colspan="8" class="muted">No active potential sell setups.</td></tr>';
+  $('sellRows').innerHTML=sells.length?sells.map(x=>'<tr><td><b class="'+symbolStClass(x.st15)+'">'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+x.scannerTf.toUpperCase()+'</td><td>'+pill(x.buyRsi)+'</td><td><span class="pill high">'+x.sellState.age+'/'+sellRequired+'</span></td></tr>').join(''):'<tr><td colspan="8" class="muted">No active potential sell setups.</td></tr>';
   const rawNegativeMacdThreshold=Number($('negativeMacdRsi').value);
   const negativeMacdThreshold=Number.isFinite(rawNegativeMacdThreshold)?Math.max(0,Math.min(100,rawNegativeMacdThreshold)):70;
   $('negativeMacdRule').textContent='5M RSI at least '+negativeMacdThreshold+' AND MACD histogram below zero';
