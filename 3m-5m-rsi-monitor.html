@@ -10,7 +10,7 @@
 main{max-width:1680px;margin:auto;padding:12px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
 h1{font-size:22px;margin:0}.tag{font-size:11px;font-weight:800;letter-spacing:.08em;color:#111827;background:var(--amber);padding:5px 9px;border-radius:6px}
 .sub{color:var(--muted);margin:5px 0 16px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px;margin:8px 0}
-.setup-grid,.signal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:start}
+.setup-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:start}.signal-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:start}
 .setup-grid>.panel{margin:0;min-width:0}
 .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:7px}.field label{display:block;color:var(--muted);font-size:11px;margin-bottom:5px;font-weight:700}
 input,select,button{width:100%;border:1px solid var(--line);border-radius:7px;padding:7px;background:#0c1625;color:var(--text);font:inherit}
@@ -23,7 +23,7 @@ button{cursor:pointer;font-weight:750;background:#1d4ed8;border-color:#2563eb}bu
 table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}th{color:var(--muted);font-size:11px;position:sticky;top:0;background:var(--panel)}
 .wrap{overflow:auto}.pill{display:inline-block;border-radius:20px;padding:3px 8px;font-size:11px;font-weight:800}.low{color:#06281c;background:var(--green)}.high{color:#3b0711;background:var(--red)}.mid{color:#3a2a05;background:#fcd34d}
 .monitor-panel{margin:14px 0}.perf-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}.perf-metric{background:#0c1625;border:1px solid var(--line);border-radius:8px;padding:9px;min-width:0}.perf-metric span{display:block;color:var(--muted);font-size:11px}.perf-metric strong{display:block;font-size:16px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.perf-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}.perf-table th,.perf-table td{text-align:left;padding:6px;border-top:1px solid var(--line)}.perf-table th{color:var(--muted)}@media(max-width:650px){.perf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}.price-alert-bull{color:var(--green);font-weight:800}.price-alert-bear{color:var(--red);font-weight:800}.price-alert-panel .stats{margin:8px 0}.price-alert-table{min-width:420px}.price-alert-table td,.price-alert-table th{padding:8px}.num{font-weight:800}.symbol-st-bull{color:var(--green)!important}.symbol-st-bear{color:var(--red)!important}.symbol-st-neutral{color:var(--text)!important}.muted{color:var(--muted)}.error{color:var(--red)}.note{font-size:12px;color:var(--muted)}
-@media(max-width:900px){.setup-grid,.signal-grid{grid-template-columns:1fr}}
+@media(max-width:900px){.setup-grid{grid-template-columns:1fr}.signal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.signal-grid{grid-template-columns:1fr}}
 @media(max-width:600px){main{padding:11px}h1{font-size:19px}.panel{padding:11px}}
 </style>
 </head>
