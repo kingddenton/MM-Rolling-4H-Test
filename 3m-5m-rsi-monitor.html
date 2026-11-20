@@ -32,8 +32,8 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 <p class="sub">Independent Binance USDⓈ-M USDT-margined scanner · Crypto + TradFi · No trading · No API key required</p>
 <section class="panel">
  <div class="controls">
-  <div class="field"><label for="universeMode">UNIVERSE SELECTION</label><select id="universeMode"><option value="percent" selected>24H change threshold</option><option value="count">Top X / Bottom X</option></select></div>
-  <div class="field" id="thresholdControl"><label for="universeSize">24H CHANGE THRESHOLD (%)</label><input id="universeSize" type="number" min="1" step="1" value="10"></div>
+  <div class="field"><label for="universeMode">UNIVERSE SELECTION</label><select id="universeMode"><option value="percent" selected>24H change threshold</option><option value="count">Top X / Bottom X</option><option value="ema">15M Strong EMA · Top/Bottom 50</option></select></div>
+  <div class="field" id="thresholdControl"><label for="universeSize">24H CHANGE THRESHOLD (%)</label><input id="universeSize" type="number" min="1" step="1" value="10"></div><div class="field" id="emaUniverseInfo" style="display:none"><label>15M EMA UNIVERSE</label><div class="note">Top 50 gainers + bottom 50 losers → up to 20 bullish + 20 bearish matches. Uses closed 15M candles; refresh every 5 minutes.</div></div>
   <div class="field" id="countControls" style="display:none"><label for="topCount">TOP GAINERS</label><input id="topCount" type="number" min="0" step="1" value="10"></div>
   <div class="field" id="bottomCountControl" style="display:none"><label for="bottomCount">BOTTOM LOSERS</label><input id="bottomCount" type="number" min="0" step="1" value="10"></div>
   <div class="field"><label for="volume">MIN 24H QUOTE VOLUME (USDT)</label><input id="volume" type="number" min="0" step="100000" value="2000000"></div>
@@ -81,7 +81,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <details id="universeDetails" open>
   <summary style="cursor:pointer;font-weight:800;display:flex;justify-content:space-between;gap:12px;align-items:center"><span>Selected Universe · <span id="universeCount">0</span> coins</span><span class="note">Tap to collapse / expand</span></summary>
   <div class="stats" style="margin:10px 0"><span>Eligible after USDT volume filter: <b id="eligibleUniverseCount">0</b></span><span>Selection: <b id="universeRule">Gainers ≥ +10% · Losers ≤ −10% (24H)</b></span><span>Minimum 24H USDT quote volume: <b id="universeVolumeRule">2,000,000 USDT</b></span></div>
-  <div class="wrap"><table><thead><tr><th>#</th><th>SYMBOL</th><th>24H CHANGE</th><th>24H QUOTE VOL (USDT)</th></tr></thead><tbody id="universeRows"><tr><td colspan="4" class="muted">Universe will appear when scanning starts.</td></tr></tbody></table></div>
+  <div class="wrap"><table><thead><tr><th>#</th><th>SIDE</th><th>SYMBOL</th><th>EMA SPREAD</th><th>24H CHANGE</th><th>24H QUOTE VOL (USDT)</th></tr></thead><tbody id="universeRows"><tr><td colspan="6" class="muted">Universe will appear when scanning starts.</td></tr></tbody></table></div>
   <p class="note">The universe is rebuilt on every scan from active USDT-quoted, USDT-margined perpetual contracts that meet the minimum 24H quote-volume filter. Threshold mode includes every eligible gainer at or above +X% and every eligible loser at or below −X%. Top X / Bottom X mode uses independently editable counts. After combining both sides, the scanner keeps at most the 100 contracts with the largest absolute 24H changes, then displays them in ascending 24H-change order.</p>
  </details>
 </section>
@@ -173,6 +173,7 @@ function supertrend15mDirection(rows){
  return dir[n-1]||0;
 }
 function symbolStClass(direction){return direction===1?'symbol-st-bull':direction===-1?'symbol-st-bear':'symbol-st-neutral'}
+function emaLast(closes,period){if(!Array.isArray(closes)||closes.length<period)return NaN;const k=2/(period+1);let value=closes[0];for(let i=1;i<closes.length;i++)value=closes[i]*k+value*(1-k);return value;}
 function rsiWilder(closes,period){
  if(closes.length<period+1)return NaN;
  let gain=0,loss=0;
@@ -355,12 +356,12 @@ async function runScan(){
   const selectedMap=new Map();
   gainers.forEach(x=>selectedMap.set(x.symbol,x));
   losers.forEach(x=>{if(!selectedMap.has(x.symbol))selectedMap.set(x.symbol,x)});
-  const universe=[...selectedMap.values()].sort((a,b)=>Math.abs(b.change)-Math.abs(a.change)).slice(0,100).sort((a,b)=>a.change-b.change).map((x,i)=>({...x,universeNumber:i+1}));
+  let universe=(mode==='ema'?[...ranked.slice(0,50),...ranked.slice(-50)]:[...selectedMap.values()].sort((a,b)=>Math.abs(b.change)-Math.abs(a.change)).slice(0,100).sort((a,b)=>a.change-b.change)).map((x,i)=>({...x,universeNumber:i+1}));
   $('universeCount').textContent=universe.length;
   $('eligibleUniverseCount').textContent=eligibleCount;
   $('universeVolumeRule').textContent=fmt(minVol)+' USDT';
-  $('universeRule').textContent=mode==='percent'?'Gainers ≥ +'+fmt(rawSize)+'% · Losers ≤ −'+fmt(rawSize)+'% (24H)':'Top '+gainers.length+' / Bottom '+losers.length+' · 24H price change';
-  $('universeRows').innerHTML=universe.length?universe.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="4" class="muted">Not enough eligible coins to build a top-and-bottom universe.</td></tr>';
+  $('universeRule').textContent=mode==='ema'?'Top 50 gainers + bottom 50 losers · 15M EMA alignment':mode==='percent'?'Gainers ≥ +'+fmt(rawSize)+'% · Losers ≤ −'+fmt(rawSize)+'% (24H)':'Top '+gainers.length+' / Bottom '+losers.length+' · 24H price change';
+  $('universeRows').innerHTML=universe.length?universe.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>—</td><td><b>'+x.symbol+'</b></td><td>—</td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">Not enough eligible coins to build a universe.</td></tr>';
    const period=Math.max(2,Math.min(100,Number($('period').value)||14));
   const scannerTf=['1m','3m','5m'].includes($('scannerTf').value)?$('scannerTf').value:'3m';
   const workers=Math.max(1,Math.min(20,Number($('workers').value)||8));
@@ -387,7 +388,7 @@ async function runScan(){
    const bucket=candlesBySymbol.get(job.symbol);
    if(bucket)bucket[job.tf]=job.rows;
   }
-  const results=universe.map(item=>{
+  let results=universe.map(item=>{
    const klines=intervals.map(tf=>candlesBySymbol.get(item.symbol)?.[tf]);
    const fetchError=errorsBySymbol.get(item.symbol);
    if(fetchError||klines.some(rows=>!rows||!rows.length))return {...item,error:fetchError||'Incomplete timeframe data'};
@@ -397,8 +398,16 @@ async function runScan(){
    const required=Math.max(1,Math.min(100,Number($('macdCandles').value)||5));
    const buyMin=Math.max(0,Math.min(100,Number($('buyRsiMin').value)||0));
    const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
-   return {...item,scannerTf,st15:supertrend15mDirection(klines[3].slice(0,-1)),r1:rsiWilder(c1,period),r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),buyState:potentialBuyState(buyCloses,period,buyMin,buyMax,required),sellState:potentialSellState(buyCloses,period,Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33)),Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42)),Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5))),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
+   return {...item,scannerTf,ema7_15:emaLast(c15,7),ema25_15:emaLast(c15,25),ema99_15:emaLast(c15,99),st15:supertrend15mDirection(klines[3].slice(0,-1)),r1:rsiWilder(c1,period),r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),buyState:potentialBuyState(buyCloses,period,buyMin,buyMax,required),sellState:potentialSellState(buyCloses,period,Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33)),Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42)),Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5))),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
   });
+  if(mode==='ema'){
+   const valid=results.filter(x=>x&&!x.error&&Number.isFinite(x.ema7_15)&&Number.isFinite(x.ema25_15)&&Number.isFinite(x.ema99_15)&&x.ema99_15>0);
+   const bullish=valid.filter(x=>x.ema7_15>x.ema25_15&&x.ema25_15>x.ema99_15).map(x=>({...x,emaSide:'BULLISH',emaStrength:(x.ema7_15-x.ema99_15)/x.ema99_15*100})).sort((a,b)=>b.emaStrength-a.emaStrength).slice(0,20).map((x,i)=>({...x,universeNumber:'B'+String(i+1).padStart(2,'0')}));
+   const bearish=valid.filter(x=>x.ema7_15<x.ema25_15&&x.ema25_15<x.ema99_15).map(x=>({...x,emaSide:'BEARISH',emaStrength:(x.ema99_15-x.ema7_15)/x.ema99_15*100})).sort((a,b)=>b.emaStrength-a.emaStrength).slice(0,20).map((x,i)=>({...x,universeNumber:'S'+String(i+1).padStart(2,'0')}));
+   universe=[...bullish,...bearish];results=universe.map(x=>({...x}));$('universeCount').textContent=universe.length;
+   $('universeRows').innerHTML=universe.length?universe.map(x=>'<tr><td>'+x.universeNumber+'</td><td class="'+(x.emaSide==='BULLISH'?'symbol-st-bull':'symbol-st-bear')+'">'+x.emaSide+'</td><td><b>'+x.symbol+'</b></td><td class="num">'+x.emaStrength.toFixed(3)+'%</td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">No strong 15M EMA alignments found in the top/bottom 50 candidates.</td></tr>';
+   $('universeRule').textContent='Top 50 gainers + bottom 50 losers · up to 20 bullish + 20 bearish · ranked by EMA spread';
+  }
   $('scanned').textContent=String(universe.length);
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
   const oiEnabled=[{tf:'1m',key:'oi1',window:60000},{tf:'3m',key:'oi3',window:180000},{tf:'5m',key:'oi5',window:300000}].filter(x=>$(x.key+'Enabled').checked);
@@ -444,7 +453,7 @@ async function runScan(){
   const buys=newestFirst(oiFilteredGood.filter(x=>x.buyState&&x.buyState.qualifies&&(!$('buyPositive24h').checked||x.change>0)),alertFirstSeen.buys).slice(0,10);
   $('buyMatches').textContent=buys.length;
   $('buySummary').textContent=scannerTf.toUpperCase()+' RSI '+fmt(buyMin)+'–'+fmt(buyMax)+' · enter range after bullish MACD cross and remain in range · '+required+' candles'+($('buyPositive24h').checked?' · positive 24H change only':'');
-  $('buyRows').innerHTML=buys.length?buys.map(x=>'<tr><td><b class="'+symbolStClass(x.st15)+'">#'+String(x.universeNumber).padStart(2,'0')+' '+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+x.scannerTf.toUpperCase()+'</td><td>'+pill(x.buyRsi)+'</td><td><span class="pill low">'+x.buyState.age+'/'+required+'</span></td></tr>').join(''):'<tr><td colspan="5" class="muted">No active potential buy setups.</td></tr>';
+  $('buyRows').innerHTML=buys.length?buys.map(x=>'<tr><td><b class="'+symbolStClass(x.st15)+'">#'+(typeof x.universeNumber==='string'?x.universeNumber:String(x.universeNumber).padStart(2,'0'))+' '+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+x.scannerTf.toUpperCase()+'</td><td>'+pill(x.buyRsi)+'</td><td><span class="pill low">'+x.buyState.age+'/'+required+'</span></td></tr>').join(''):'<tr><td colspan="5" class="muted">No active potential buy setups.</td></tr>';
   const sellMin=Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33));
   const sellMax=Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42));
   const sellRequired=Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5));
@@ -471,10 +480,12 @@ async function runScan(){
  finally{scanBusy=false;if(running&&!stopRequested){if($('continuous').value==='on'){const sec=Number($('refresh').value);const normalDelay=(sec>0?sec:60)*1000;const cooldownDelay=Math.max(0,rateLimitUntil-Date.now());const delay=Math.max(normalDelay,cooldownDelay);if(cooldownDelay>0)setStatus('Binance rate-limit cooldown · resuming in '+Math.ceil(cooldownDelay/1000)+'s');loopTimer=setTimeout(runScan,delay)}else{running=false;setRunningButton(false);setStatus('Single scan complete. Select Continuous scanning to keep the monitor running.')}}}
 }
 function updateUniverseControls(){
- const countMode=$('universeMode').value==='count';
- $('thresholdControl').style.display=countMode?'none':'block';
+ const mode=$('universeMode').value;const countMode=mode==='count',emaMode=mode==='ema';
+ $('thresholdControl').style.display=countMode||emaMode?'none':'block';
  $('countControls').style.display=countMode?'block':'none';
  $('bottomCountControl').style.display=countMode?'block':'none';
+ $('emaUniverseInfo').style.display=emaMode?'block':'none';
+ if(emaMode&&$('refresh').value!=='300')$('refresh').value='300';
 }
 $('universeMode').addEventListener('change',()=>{updateUniverseControls();saveSettings()});
 updateUniverseControls();
