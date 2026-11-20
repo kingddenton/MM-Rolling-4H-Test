@@ -212,6 +212,7 @@ function stopPriceStream(){
 }
 function connectPriceChunk(index){
  if(priceWsStopped||!running)return;
+ const total=Math.ceil(priceWsSymbols.length/40);
  const symbols=priceWsSymbols.slice(index*40,(index+1)*40);
  if(!symbols.length)return;
  const streams=symbols.map(s=>s.toLowerCase()+'@kline_1m');
