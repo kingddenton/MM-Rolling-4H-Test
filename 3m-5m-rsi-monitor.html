@@ -356,7 +356,8 @@ async function runScan(){
   const selectedMap=new Map();
   gainers.forEach(x=>selectedMap.set(x.symbol,x));
   losers.forEach(x=>{if(!selectedMap.has(x.symbol))selectedMap.set(x.symbol,x)});
-  let universe=(mode==='ema'?[...ranked.slice(0,50),...ranked.slice(-50)]:[...selectedMap.values()].sort((a,b)=>Math.abs(b.change)-Math.abs(a.change)).slice(0,100).sort((a,b)=>a.change-b.change)).map((x,i)=>({...x,universeNumber:i+1}));
+  let universe=(mode==='ema'?[...new Map([...ranked.slice(0,50),...ranked.slice(-50)].map(x=>[x.symbol,x])).values()]:[...selectedMap.values()].sort((a,b)=>Math.abs(b.change)-Math.abs(a.change)).slice(0,100).sort((a,b)=>a.change-b.change)).map((x,i)=>({...x,universeNumber:i+1}));
+  const candidateUniverse=universe;
   $('universeCount').textContent=universe.length;
   $('eligibleUniverseCount').textContent=eligibleCount;
   $('universeVolumeRule').textContent=fmt(minVol)+' USDT';
@@ -408,7 +409,7 @@ async function runScan(){
    $('universeRows').innerHTML=universe.length?universe.map(x=>'<tr><td>'+x.universeNumber+'</td><td class="'+(x.emaSide==='BULLISH'?'symbol-st-bull':'symbol-st-bear')+'">'+x.emaSide+'</td><td><b>'+x.symbol+'</b></td><td class="num">'+x.emaStrength.toFixed(3)+'%</td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">No strong 15M EMA alignments found in the top/bottom 50 candidates.</td></tr>';
    $('universeRule').textContent='Top 50 gainers + bottom 50 losers · up to 20 bullish + 20 bearish · ranked by EMA spread';
   }
-  $('scanned').textContent=String(universe.length);
+  $('scanned').textContent=String(candidateUniverse.length);
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
   const oiEnabled=[{tf:'1m',key:'oi1',window:60000},{tf:'3m',key:'oi3',window:180000},{tf:'5m',key:'oi5',window:300000}].filter(x=>$(x.key+'Enabled').checked);
   const oiValues=await mapLimit(universe,workers,async item=>{
@@ -471,9 +472,9 @@ async function runScan(){
   $('last').textContent=new Date().toLocaleTimeString();
   const errors=results.filter(x=>x&&x.error).length;
   const coinTimes=[...performance.coinTimes.entries()].map(([symbol,ms])=>({symbol,ms})).sort((a,b)=>a.ms-b.ms);
-  const jobs=universe.flatMap(x=>['1m','3m','5m','15m','1h','4h'].map(tf=>x.symbol+' '+tf));
+  const jobs=candidateUniverse.flatMap(x=>['1m','3m','5m','15m','1h','4h'].map(tf=>x.symbol+' '+tf));
   const notStarted=performance.totalJobs-performance.startedJobs;
-  performance.last={duration:(Date.now()-performance.scanStarted)/1000,workers,universeSeconds:performance.universeMs/1000,coins:universe.length,totalJobs:performance.totalJobs,startedJobs:performance.startedJobs,finishedJobs:performance.finishedJobs,checkedJobs:performance.checkedJobs,failures:performance.failures,notStarted,missingJobs:jobs.filter(key=>!performance.startedJobKeys.has(key)),restRequests:performance.restRequests,cacheHits:performance.cacheHits,cacheMisses:performance.cacheMisses,peakWorkers:performance.peakWorkers,fastest:coinTimes[0]||null,slowest:coinTimes[coinTimes.length-1]||null};
+  performance.last={duration:(Date.now()-performance.scanStarted)/1000,workers,universeSeconds:performance.universeMs/1000,coins:candidateUniverse.length,totalJobs:performance.totalJobs,startedJobs:performance.startedJobs,finishedJobs:performance.finishedJobs,checkedJobs:performance.checkedJobs,failures:performance.failures,notStarted,missingJobs:jobs.filter(key=>!performance.startedJobKeys.has(key)),restRequests:performance.restRequests,cacheHits:performance.cacheHits,cacheMisses:performance.cacheMisses,peakWorkers:performance.peakWorkers,fastest:coinTimes[0]||null,slowest:coinTimes[coinTimes.length-1]||null};
   performance.history.push(performance.last);if(performance.history.length>10)performance.history.shift();renderPerformance();
   setStatus('Scan complete: '+matches.length+' coins match both RSI filters out of '+good.length+' valid pairs'+(errors?' · '+errors+' pair errors':'')+'.');
  }catch(e){setStatus(e.message||'Scan failed. Check connection and retry.',true)}
