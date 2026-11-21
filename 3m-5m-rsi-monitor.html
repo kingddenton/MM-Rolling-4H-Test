@@ -671,7 +671,7 @@ async function runScan(){
    }).join('');
    $('universeDiagMode').textContent=mode==='percent'?'24H threshold ±'+fmt(rawSize)+'%':mode==='count'?'Top '+topCount+' / Bottom '+bottomCount:'15M EMA · Top/Bottom 50 → Top 20 each side';
    $('universeDiagEligible').textContent=String(eligibleCount);
-   $('universeDiagSelected').textContent=String(universe.length);
+   $('universeDiagSelected').textContent=String(candidateUniverse.length);
    $('universeDiagnosticRows').innerHTML=universeDiagHtml;
    $('scanned').textContent=String(candidateUniverse.length);
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
