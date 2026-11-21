@@ -392,7 +392,7 @@ function potentialBuyState(closes,period,minRsi,maxRsi,window){
   if(dif[i]<dea[i]&&dif[i-1]>=dea[i-1]){crossIndex=i;crossType='down';break}
  }
  if(crossType!=='up')return {qualifies:false,age:0};
- const age=closes.length-crossIndex-1;
+ const age=closes.length-crossIndex;
  if(age<1||age>window)return {qualifies:false,age};
  let qualified=false;
  for(let i=crossIndex+1;i<closes.length;i++){
@@ -424,7 +424,7 @@ function potentialSellState(closes,period,minRsi,maxRsi,window){
   if(dif[i]<dea[i]&&dif[i-1]>=dea[i-1]){crossIndex=i;crossType='down';break}
  }
  if(crossType!=='down')return {qualifies:false,age:0};
- const age=closes.length-crossIndex-1;
+ const age=closes.length-crossIndex;
  if(age<1||age>window)return {qualifies:false,age};
  let qualified=false;
  for(let i=crossIndex+1;i<closes.length;i++){
