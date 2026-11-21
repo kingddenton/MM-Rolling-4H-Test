@@ -82,6 +82,12 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <div class="stats"><span>BUY: <b id="diagBuySummary">Waiting</b></span><span>SELL: <b id="diagSellSummary">Waiting</b></span><span>Scanned symbols: <b id="diagScanned">0</b></span></div>
  <div class="wrap"><table class="perf-table"><thead><tr><th>Side</th><th>Symbol</th><th>Timeframe</th><th>MACD cross</th><th>Age</th><th>RSI</th><th>Decision / rejection reason</th></tr></thead><tbody id="signalDiagnosticRows"><tr><td colspan="7">Waiting for first scan.</td></tr></tbody></table></div>
 </details>
+<details class="panel monitor-panel" id="universeDiagnostics">
+ <summary style="cursor:pointer;font-size:15px;font-weight:750;list-style:none">UNIVERSE SELECTION DIAGNOSTICS · BLESS / SKDD</summary>
+ <p class="note" style="margin:5px 0">Tracks both symbols from the active USDT-perpetual contract list through the 24H quote-volume gate and selected-universe rule. Separate from signal rejection diagnostics; does not change selection.</p>
+ <div class="stats"><span>Mode: <b id="universeDiagMode">Waiting</b></span><span>Eligible after volume: <b id="universeDiagEligible">—</b></span><span>Selected before signal scan: <b id="universeDiagSelected">—</b></span></div>
+ <div class="wrap"><table class="perf-table"><thead><tr><th>Symbol</th><th>Contract</th><th>24H quote volume</th><th>24H change</th><th>Rank</th><th>Volume gate</th><th>Universe decision</th></tr></thead><tbody id="universeDiagnosticRows"><tr><td colspan="7">Waiting for first scan.</td></tr></tbody></table></div>
+</details>
 <section class="panel">
  <details id="universeDetails">
   <summary style="cursor:pointer;font-weight:800;display:flex;justify-content:space-between;gap:12px;align-items:center"><span>Selected Universe · <span id="universeCount">0</span> coins</span><span class="note">Tap to collapse / expand</span></summary>
@@ -638,7 +644,36 @@ async function runScan(){
    $('universeRows').innerHTML=universe.length?universe.map(x=>'<tr><td>'+x.universeNumber+'</td><td class="'+(x.emaSide==='BULLISH'?'symbol-st-bull':'symbol-st-bear')+'">'+x.emaSide+'</td><td><b>'+x.symbol+'</b></td><td class="num">'+x.emaStrength.toFixed(3)+'%</td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">No strong 15M EMA alignments found in the top/bottom 50 candidates.</td></tr>';
    $('universeRule').textContent='Top 50 gainers + bottom 50 losers · up to 20 bullish + 20 bearish · ranked by EMA spread';
   }
-  $('scanned').textContent=String(candidateUniverse.length);
+     const universeDiagTargets=['BLESSUSDT','SKDDUSDT'];
+   const universeDiagHtml=universeDiagTargets.map(symbol=>{
+    const contract=info.symbols.find(x=>x.symbol===symbol),ticker=tickerMap.get(symbol),market=eligible.find(x=>x.symbol===symbol);
+    const volume=ticker?Number(ticker.quoteVolume)||0:NaN,change=ticker?Number(ticker.priceChangePercent):NaN;
+    const rank=market?ranked.findIndex(x=>x.symbol===symbol)+1:null;
+    const rankBottom=market?ranked.length-rank+1:null;
+    const contractPass=!!contract&&contract.status==='TRADING'&&contract.quoteAsset==='USDT'&&contract.marginAsset==='USDT';
+    const volumePass=!!market;
+    let decision='Selected for signal scan';
+    if(!contract)decision='Not found in exchange contract list';
+    else if(!contractPass)decision='Contract excluded: not active USDT-margined USDT perpetual';
+    else if(!ticker)decision='No 24H ticker data';
+    else if(!volumePass)decision='Excluded: below minimum 24H quote volume';
+    else if(mode==='percent'&&!(change>=rawSize||change<=-rawSize))decision='Excluded: 24H change is inside ±'+fmt(rawSize)+'% threshold';
+    else if(mode==='count'&&!(rank<=topCount||rankBottom<=bottomCount))decision='Excluded: outside Top '+topCount+' / Bottom '+bottomCount+' ranking';
+    else if(mode==='ema'&&!(rank<=50||rankBottom<=50))decision='Excluded: outside Top 50 / Bottom 50 EMA candidate pool';
+    else if(mode==='ema'){
+     const row=results.find(x=>x.symbol===symbol);
+     if(!row||row.error)decision='Excluded: 15M EMA data unavailable';
+     else if(!(row.ema7_15>row.ema25_15&&row.ema25_15>row.ema99_15)&&!(row.ema7_15<row.ema25_15&&row.ema25_15<row.ema99_15))decision='Excluded: 15M EMA 7/25/99 not fully aligned';
+     else if(!universe.some(x=>x.symbol===symbol))decision='Excluded: outside top 20 EMA-spread results on its side';
+    }
+    const contractLabel=!contract?'Missing':contractPass?'PASS':'FAIL';
+    return '<tr><td><b>'+symbol+'</b></td><td>'+contractLabel+'</td><td>'+fmt(volume)+'</td><td>'+(Number.isFinite(change)?(change>=0?'+':'')+fmt(change)+'%':'—')+'</td><td>'+(rank===null?'—':'#'+rank+' / #'+rankBottom)+'</td><td>'+(volumePass?'PASS':'FAIL')+'</td><td>'+decision+'</td></tr>';
+   }).join('');
+   $('universeDiagMode').textContent=mode==='percent'?'24H threshold ±'+fmt(rawSize)+'%':mode==='count'?'Top '+topCount+' / Bottom '+bottomCount:'15M EMA · Top/Bottom 50 → Top 20 each side';
+   $('universeDiagEligible').textContent=String(eligibleCount);
+   $('universeDiagSelected').textContent=String(universe.length);
+   $('universeDiagnosticRows').innerHTML=universeDiagHtml;
+   $('scanned').textContent=String(candidateUniverse.length);
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
   const oiEnabled=[{tf:'1m',key:'oi1',window:60000},{tf:'3m',key:'oi3',window:180000},{tf:'5m',key:'oi5',window:300000}].filter(x=>$(x.key+'Enabled').checked);
   const oiValues=await mapLimit(universe,workers,async item=>{
