@@ -407,7 +407,7 @@ function potentialBuyState(closes,period,minRsi,maxRsi,window,times=[]){
  return {qualifies:qualified,age,crossType,crossIndex,crossTime:times[crossIndex]??crossIndex,qualifiedIndex};
 }
 function potentialSellState(closes,period,minRsi,maxRsi,window,times=[]){
- if(closes.length<Math.max(40,period+1))return {qualifies:false,age:0};
+ if(closes.length<Math.max(40,period+1))return {qualifies:false,age:0,crossType:'',crossTime:null};
  const ema=(values,p)=>{const k=2/(p+1);let v=values[0];const out=[v];for(let i=1;i<values.length;i++){v=values[i]*k+v*(1-k);out.push(v)}return out};
  const fast=ema(closes,12),slow=ema(closes,26);
  const dif=fast.map((v,i)=>v-slow[i]),dea=ema(dif,9);
@@ -425,8 +425,8 @@ function potentialSellState(closes,period,minRsi,maxRsi,window,times=[]){
  }
  if(crossType!=='down')return {qualifies:false,age:0,crossType,crossIndex,crossTime:crossIndex>=0?times[crossIndex]??crossIndex:null};
  const age=closes.length-crossIndex;
- if(age<1||age>window)return {qualifies:false,age};
- let qualified=false;
+ if(age<1||age>window)return {qualifies:false,age,crossType,crossIndex,crossTime:times[crossIndex]??crossIndex};
+ let qualified=false,qualifiedIndex=-1;
  for(let i=crossIndex+1;i<closes.length;i++){
   const red=dif[i]<dea[i],inRange=Number.isFinite(rsi[i])&&rsi[i]>=minRsi&&rsi[i]<=maxRsi;
   if(!qualified&&red&&inRange){qualified=true;qualifiedIndex=i;}
