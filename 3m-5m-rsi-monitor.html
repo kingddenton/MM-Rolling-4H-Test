@@ -720,9 +720,10 @@ async function runScan(){
   const buyChangeMin=$('buyChangeMin').value.trim()===''?null:Number($('buyChangeMin').value),buyChangeMax=$('buyChangeMax').value.trim()===''?null:Number($('buyChangeMax').value);
   const buyEmaDirectionPass=x=>Number.isFinite(x.buyEma7)&&Number.isFinite(x.buyEma25)&&x.buyEma7>x.buyEma25;
   const buyEmaPass=x=>buyEmaDirectionPass(x)&&Number.isFinite(x.buyEma99)&&x.buyEma25>x.buyEma99;
-  const buyInitialFilter=x=>passesOiFilters(x)&&(!$('buyPositive24h').checked||x.change>0)&&Number.isFinite(x.buyPriceChange)&&(buyChangeMin===null||x.buyPriceChange>=buyChangeMin)&&(buyChangeMax===null||x.buyPriceChange<=buyChangeMax)&&(!$('buyEmaCompare').checked||buyEmaPass(x));
+  const buyInitialFilter=x=>passesOiFilters(x)&&(!$('buyPositive24h').checked||x.change>0)&&(!$('buyEmaCompare').checked||buyEmaPass(x));
   const retainedBuys=retainQualifiedSetups(good,'buy',buyTf,required,buyInitialFilter);
-  const buyCandidates=newestFirst(retainedBuys,alertFirstSeen.buys);
+  const buyCandidatesAll=newestFirst(retainedBuys,alertFirstSeen.buys);
+  const buyCandidates=buyCandidatesAll.filter(x=>Number.isFinite(x.buyPriceChange)&&(buyChangeMin===null||x.buyPriceChange>=buyChangeMin)&&(buyChangeMax===null||x.buyPriceChange<=buyChangeMax));
   const buyEmaPassCount=buyCandidates.filter(buyEmaPass).length;
   const buyEmaPartialFailCount=buyCandidates.length-buyEmaPassCount;
   $('buyEmaSummary').textContent=$('buyEmaCompare').checked?'Retained setups are not removed by later EMA changes · Current full EMA pass: '+buyEmaPassCount+' · 99 alignment not required for retention':'EMA comparison off · Retained setups remain until opposite cross or expiry';
@@ -736,7 +737,7 @@ async function runScan(){
   const sellChangeMin=$('sellChangeMin').value.trim()===''?null:Number($('sellChangeMin').value),sellChangeMax=$('sellChangeMax').value.trim()===''?null:Number($('sellChangeMax').value);
   const sellEmaDirectionPass=x=>Number.isFinite(x.sellEma7)&&Number.isFinite(x.sellEma25)&&x.sellEma7<x.sellEma25;
   const sellEmaPass=x=>sellEmaDirectionPass(x)&&Number.isFinite(x.sellEma99)&&x.sellEma25<x.sellEma99;
-  const sellInitialFilter=x=>passesOiFilters(x)&&(!$('sellNegative24h').checked||x.change<0)&&Number.isFinite(x.sellPriceChange)&&(sellChangeMin===null||x.sellPriceChange>=sellChangeMin)&&(sellChangeMax===null||x.sellPriceChange<=sellChangeMax)&&(!$('sellEmaCompare').checked||sellEmaPass(x));
+  const sellInitialFilter=x=>passesOiFilters(x)&&(!$('sellNegative24h').checked||x.change<0)&&(!$('sellEmaCompare').checked||sellEmaPass(x));
   const signalRejectReason=(x,side,window)=>{
    const state=side==='buy'?x.buyState:x.sellState,expected=side==='buy'?'up':'down';
    if(!state)return 'Indicator state unavailable';
@@ -748,18 +749,14 @@ async function runScan(){
    if(!passesOiFilters(x))return 'Blocked by enabled Open Interest filter';
    if(side==='buy'){
     if($('buyPositive24h').checked&&!(x.change>0))return '24H change is not positive';
-    if(!Number.isFinite(x.buyPriceChange))return 'Buy timeframe price change unavailable';
-    if(buyChangeMin!==null&&x.buyPriceChange<buyChangeMin)return 'Below Buy TF minimum price change';
-    if(buyChangeMax!==null&&x.buyPriceChange>buyChangeMax)return 'Above Buy TF maximum price change';
     if($('buyEmaCompare').checked&&!buyEmaPass(x))return 'EMA alignment is not 7 > 25 > 99';
    }else{
     if($('sellNegative24h').checked&&!(x.change<0))return '24H change is not negative';
-    if(!Number.isFinite(x.sellPriceChange))return 'Sell timeframe price change unavailable';
-    if(sellChangeMin!==null&&x.sellPriceChange<sellChangeMin)return 'Below Sell TF minimum price change';
-    if(sellChangeMax!==null&&x.sellPriceChange>sellChangeMax)return 'Above Sell TF maximum price change';
     if($('sellEmaCompare').checked&&!sellEmaPass(x))return 'EMA alignment is not 7 < 25 < 99';
    }
-   return 'Qualified / retained';
+   if(side==='buy'&&(!Number.isFinite(x.buyPriceChange)||(buyChangeMin!==null&&x.buyPriceChange<buyChangeMin)||(buyChangeMax!==null&&x.buyPriceChange>buyChangeMax)))return 'Qualified — waiting for Buy TF price-change filter';
+   if(side==='sell'&&(!Number.isFinite(x.sellPriceChange)||(sellChangeMin!==null&&x.sellPriceChange<sellChangeMin)||(sellChangeMax!==null&&x.sellPriceChange>sellChangeMax)))return 'Qualified — waiting for Sell TF price-change filter';
+   return 'Qualified / retained — price filter passed';
   };
   const diagRows=[];
   for(const x of results){if(!x)continue;for(const side of ['buy','sell']){
@@ -771,7 +768,8 @@ async function runScan(){
   $('diagBuySummary').textContent=summarizeReasons('buy');$('diagSellSummary').textContent=summarizeReasons('sell');$('diagScanned').textContent=results.length+' coins · '+diagRows.length+' side checks';
   $('signalDiagnosticRows').innerHTML=diagRows.length?diagRows.sort((a,b)=>(a.side===b.side?0:a.side==='buy'?-1:1)||a.symbol.localeCompare(b.symbol)).slice(0,400).map(x=>'<tr><td>'+x.side.toUpperCase()+'</td><td><b>'+x.symbol+'</b></td><td>'+x.tf.toUpperCase()+'</td><td>'+(x.state?.crossType?x.state.crossType.toUpperCase():'—')+'</td><td>'+(Number.isFinite(x.state?.age)?x.state.age+'/'+(x.side==='buy'?required:sellRequired):'—')+'</td><td>'+(Number.isFinite(x.rsi)?fmt(x.rsi):'—')+'</td><td>'+x.reason+'</td></tr>').join(''):'<tr><td colspan="7">No scanned coins available for diagnostics.</td></tr>';
   const retainedSells=retainQualifiedSetups(good,'sell',sellTf,sellRequired,sellInitialFilter);
-  const sellCandidates=newestFirst(retainedSells,alertFirstSeen.sells);
+  const sellCandidatesAll=newestFirst(retainedSells,alertFirstSeen.sells);
+  const sellCandidates=sellCandidatesAll.filter(x=>Number.isFinite(x.sellPriceChange)&&(sellChangeMin===null||x.sellPriceChange>=sellChangeMin)&&(sellChangeMax===null||x.sellPriceChange<=sellChangeMax));
   const sellEmaPassCount=sellCandidates.filter(sellEmaPass).length;
   const sellEmaPartialFailCount=sellCandidates.length-sellEmaPassCount;
   $('sellEmaSummary').textContent=$('sellEmaCompare').checked?'Retained setups are not removed by later EMA changes · Current full EMA pass: '+sellEmaPassCount+' · 99 alignment not required for retention':'EMA comparison off · Retained setups remain until opposite cross or expiry';
