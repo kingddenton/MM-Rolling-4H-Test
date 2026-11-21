@@ -371,8 +371,8 @@ function macdState(closes,required){
  for(let i=dif.length-1;i>=0;i--){if(dif[i]>0&&dif[i]>dea[i])count++;else break}
  const lastDif=dif[dif.length-1],lastDea=dea[dea.length-1];return {bull:count>=required,count,dif:lastDif,dea:lastDea,hist:lastDif-lastDea};
 }
-function potentialBuyState(closes,period,minRsi,maxRsi,window){
- if(closes.length<Math.max(40,period+1))return {qualifies:false,age:0};
+function potentialBuyState(closes,period,minRsi,maxRsi,window,times=[]){
+ if(closes.length<Math.max(40,period+1))return {qualifies:false,age:0,crossType:'',crossTime:null};
  const ema=(values,p)=>{const k=2/(p+1);let v=values[0];const out=[v];for(let i=1;i<values.length;i++){v=values[i]*k+v*(1-k);out.push(v)}return out};
  const fast=ema(closes,12),slow=ema(closes,26);
  const dif=fast.map((v,i)=>v-slow[i]),dea=ema(dif,9);
@@ -393,20 +393,20 @@ function potentialBuyState(closes,period,minRsi,maxRsi,window){
   if(dif[i]>dea[i]&&dif[i-1]<=dea[i-1]){crossIndex=i;crossType='up';break}
   if(dif[i]<dea[i]&&dif[i-1]>=dea[i-1]){crossIndex=i;crossType='down';break}
  }
- if(crossType!=='up')return {qualifies:false,age:0};
+ if(crossType!=='up')return {qualifies:false,age:0,crossType,crossIndex,crossTime:crossIndex>=0?times[crossIndex]??crossIndex:null};
  const age=closes.length-crossIndex;
- if(age<1||age>window)return {qualifies:false,age};
- let qualified=false;
+ if(age<1||age>window)return {qualifies:false,age,crossType,crossIndex,crossTime:times[crossIndex]??crossIndex};
+ let qualified=false,qualifiedIndex=-1;
  for(let i=crossIndex+1;i<closes.length;i++){
   const green=dif[i]>dea[i];
   const inRange=Number.isFinite(rsi[i])&&rsi[i]>=minRsi&&rsi[i]<=maxRsi;
   if(!qualified&&green&&inRange){
-   qualified=true;
+   qualified=true;qualifiedIndex=i;
   }
  }
- return {qualifies:qualified,age};
+ return {qualifies:qualified,age,crossType,crossIndex,crossTime:times[crossIndex]??crossIndex,qualifiedIndex};
 }
-function potentialSellState(closes,period,minRsi,maxRsi,window){
+function potentialSellState(closes,period,minRsi,maxRsi,window,times=[]){
  if(closes.length<Math.max(40,period+1))return {qualifies:false,age:0};
  const ema=(values,p)=>{const k=2/(p+1);let v=values[0];const out=[v];for(let i=1;i<values.length;i++){v=values[i]*k+v*(1-k);out.push(v)}return out};
  const fast=ema(closes,12),slow=ema(closes,26);
@@ -423,15 +423,15 @@ function potentialSellState(closes,period,minRsi,maxRsi,window){
   if(dif[i]>dea[i]&&dif[i-1]<=dea[i-1]){crossIndex=i;crossType='up';break}
   if(dif[i]<dea[i]&&dif[i-1]>=dea[i-1]){crossIndex=i;crossType='down';break}
  }
- if(crossType!=='down')return {qualifies:false,age:0};
+ if(crossType!=='down')return {qualifies:false,age:0,crossType,crossIndex,crossTime:crossIndex>=0?times[crossIndex]??crossIndex:null};
  const age=closes.length-crossIndex;
  if(age<1||age>window)return {qualifies:false,age};
  let qualified=false;
  for(let i=crossIndex+1;i<closes.length;i++){
   const red=dif[i]<dea[i],inRange=Number.isFinite(rsi[i])&&rsi[i]>=minRsi&&rsi[i]<=maxRsi;
-  if(!qualified&&red&&inRange)qualified=true;
+  if(!qualified&&red&&inRange){qualified=true;qualifiedIndex=i;}
  }
- return {qualifies:qualified,age};
+ return {qualifies:qualified,age,crossType,crossIndex,crossTime:times[crossIndex]??crossIndex,qualifiedIndex};
 }
 function macdCrossoverAge(closes){
  if(closes.length<40)return 0;
@@ -512,6 +512,30 @@ function renderPerformance(){
  $('perfHistory').innerHTML=performance.history.slice().reverse().map((x,i)=>'<tr><td>'+(performance.history.length-i)+'</td><td>'+x.workers+'</td><td>'+x.duration.toFixed(1)+'s</td><td>'+x.coins+'</td><td>'+x.startedJobs+'/'+x.totalJobs+'</td><td>'+x.finishedJobs+'</td><td>'+x.failures+'</td><td>'+x.notStarted+'</td><td>'+x.cacheHits+'</td></tr>').join('')||'<tr><td colspan="9">No completed scans yet.</td></tr>';
 }
 const alertFirstSeen={matches:new Map(),buys:new Map(),sells:new Map(),negativeMacd:new Map()};
+const retainedBuySetups=new Map(),retainedSellSetups=new Map();
+function retainQualifiedSetups(rows,side,tf,window){
+ const store=side==='buy'?retainedBuySetups:retainedSellSetups;
+ const current=new Map(rows.map(x=>[x.symbol,x]));
+ for(const [key,record] of store){
+  if(record.tf!==tf)continue;
+  const row=current.get(record.symbol);
+  if(!row)continue;
+  const state=side==='buy'?row.buyState:row.sellState;
+  const expected=side==='buy'?'up':'down';
+  if(!state||state.crossType!==expected||state.crossTime!==record.crossTime||state.age>window||state.age<1){store.delete(key);continue}
+  record.row={...row,[side+'State']:{...state,qualifies:true}};
+  record.age=state.age;
+ }
+ for(const row of rows){
+  const state=side==='buy'?row.buyState:row.sellState,expected=side==='buy'?'up':'down';
+  if(!state||!state.qualifies||state.crossType!==expected||!Number.isFinite(state.crossTime))continue;
+  const key=row.symbol+'|'+tf,existing=store.get(key);
+  if(existing&&existing.crossTime!==state.crossTime)store.delete(key);
+  if(!store.has(key))store.set(key,{symbol:row.symbol,tf,crossTime:state.crossTime,qualifiedAt:state.qualifiedIndex,firstSeen:Date.now(),row:{...row},age:state.age});
+  else{const record=store.get(key);record.row={...row,[side+'State']:{...state,qualifies:true}};record.age=state.age;}
+ }
+ return [...store.values()].filter(x=>x.tf===tf).map(x=>x.row);
+}
 let alertSequence=0;
 function newestFirst(items,tracker){
  const active=new Set(items.map(x=>x.symbol));
@@ -590,13 +614,14 @@ async function runScan(){
    const closes=Object.fromEntries(intervals.map((tf,i)=>[tf,klines[i].slice(0,-1).map(x=>Number(x[4]))])); // Exclude Binance's still-forming candle: all indicators use closed candles only.
    const c1=closes['1m'],c3=closes['3m'],c5=closes['5m'],c15=closes['15m'],c1h=closes['1h'],c4h=closes['4h'];
    const buyCloses=closes[buyTf],sellCloses=closes[sellTf];
+   const buyTimes=klines[intervals.indexOf(buyTf)].slice(0,-1).map(x=>Number(x[0])),sellTimes=klines[intervals.indexOf(sellTf)].slice(0,-1).map(x=>Number(x[0]));
    const required=Math.max(1,Math.min(100,Number($('macdCandles').value)||5));
    const buyMin=Math.max(0,Math.min(100,Number($('buyRsiMin').value)||0));
    const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
    const buyCandle=klines[intervals.indexOf(buyTf)]?.slice(0,-1).at(-1),sellCandle=klines[intervals.indexOf(sellTf)]?.slice(0,-1).at(-1);
    const buyPriceChange=buyCandle&&Number(buyCandle[1])>0?(Number(buyCandle[4])-Number(buyCandle[1]))/Number(buyCandle[1])*100:NaN;
    const sellPriceChange=sellCandle&&Number(sellCandle[1])>0?(Number(sellCandle[4])-Number(sellCandle[1]))/Number(sellCandle[1])*100:NaN;
-   return {...item,buyTf,sellTf,buyPriceChange,sellPriceChange,buyEma7:emaLast(buyCloses,7),buyEma25:emaLast(buyCloses,25),buyEma99:emaLast(buyCloses,99),sellEma7:emaLast(sellCloses,7),sellEma25:emaLast(sellCloses,25),sellEma99:emaLast(sellCloses,99),ema7_15:emaLast(c15,7),ema25_15:emaLast(c15,25),ema99_15:emaLast(c15,99),st15:supertrend15mDirection(klines[3].slice(0,-1)),r1:rsiWilder(c1,period),r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),sellRsi:rsiWilder(sellCloses,period),buyState:potentialBuyState(buyCloses,period,buyMin,buyMax,required),sellState:potentialSellState(sellCloses,period,Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33)),Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42)),Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5))),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
+   return {...item,buyTf,sellTf,buyPriceChange,sellPriceChange,buyEma7:emaLast(buyCloses,7),buyEma25:emaLast(buyCloses,25),buyEma99:emaLast(buyCloses,99),sellEma7:emaLast(sellCloses,7),sellEma25:emaLast(sellCloses,25),sellEma99:emaLast(sellCloses,99),ema7_15:emaLast(c15,7),ema25_15:emaLast(c15,25),ema99_15:emaLast(c15,99),st15:supertrend15mDirection(klines[3].slice(0,-1)),r1:rsiWilder(c1,period),r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),sellRsi:rsiWilder(sellCloses,period),buyState:potentialBuyState(buyCloses,period,buyMin,buyMax,required,buyTimes),sellState:potentialSellState(sellCloses,period,Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33)),Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42)),Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5)),sellTimes),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
   });
   if(mode==='ema'){
    const valid=results.filter(x=>x&&!x.error&&Number.isFinite(x.ema7_15)&&Number.isFinite(x.ema25_15)&&Number.isFinite(x.ema99_15)&&x.ema99_15>0);
@@ -649,7 +674,8 @@ async function runScan(){
   const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
   const required=Math.max(1,Math.min(100,Number($('macdCandles').value)||5));
   const buyChangeMin=$('buyChangeMin').value.trim()===''?null:Number($('buyChangeMin').value),buyChangeMax=$('buyChangeMax').value.trim()===''?null:Number($('buyChangeMax').value);
-  const buyCandidates=newestFirst(oiFilteredGood.filter(x=>x.buyState&&x.buyState.qualifies&&(!$('buyPositive24h').checked||x.change>0)&&Number.isFinite(x.buyPriceChange)&&(buyChangeMin===null||x.buyPriceChange>=buyChangeMin)&&(buyChangeMax===null||x.buyPriceChange<=buyChangeMax)),alertFirstSeen.buys);
+  const retainedBuys=retainQualifiedSetups(good,'buy',buyTf,required);
+  const buyCandidates=newestFirst(retainedBuys.filter(x=>passesOiFilters(x)&&(!$('buyPositive24h').checked||x.change>0)&&Number.isFinite(x.buyPriceChange)&&(buyChangeMin===null||x.buyPriceChange>=buyChangeMin)&&(buyChangeMax===null||x.buyPriceChange<=buyChangeMax)),alertFirstSeen.buys);
   const buyEmaDirectionPass=x=>Number.isFinite(x.buyEma7)&&Number.isFinite(x.buyEma25)&&x.buyEma7>x.buyEma25;
   const buyEmaPass=x=>buyEmaDirectionPass(x)&&Number.isFinite(x.buyEma99)&&x.buyEma25>x.buyEma99;
   const buyEmaDirectionCandidates=$('buyEmaCompare').checked?buyCandidates.filter(buyEmaDirectionPass):buyCandidates;
@@ -665,7 +691,8 @@ async function runScan(){
   const sellMax=Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42));
   const sellRequired=Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5));
   const sellChangeMin=$('sellChangeMin').value.trim()===''?null:Number($('sellChangeMin').value),sellChangeMax=$('sellChangeMax').value.trim()===''?null:Number($('sellChangeMax').value);
-  const sellCandidates=newestFirst(oiFilteredGood.filter(x=>x.sellState&&x.sellState.qualifies&&(!$('sellNegative24h').checked||x.change<0)&&Number.isFinite(x.sellPriceChange)&&(sellChangeMin===null||x.sellPriceChange>=sellChangeMin)&&(sellChangeMax===null||x.sellPriceChange<=sellChangeMax)),alertFirstSeen.sells);
+  const retainedSells=retainQualifiedSetups(good,'sell',sellTf,sellRequired);
+  const sellCandidates=newestFirst(retainedSells.filter(x=>passesOiFilters(x)&&(!$('sellNegative24h').checked||x.change<0)&&Number.isFinite(x.sellPriceChange)&&(sellChangeMin===null||x.sellPriceChange>=sellChangeMin)&&(sellChangeMax===null||x.sellPriceChange<=sellChangeMax)),alertFirstSeen.sells);
   const sellEmaDirectionPass=x=>Number.isFinite(x.sellEma7)&&Number.isFinite(x.sellEma25)&&x.sellEma7<x.sellEma25;
   const sellEmaPass=x=>sellEmaDirectionPass(x)&&Number.isFinite(x.sellEma99)&&x.sellEma25<x.sellEma99;
   const sellEmaDirectionCandidates=$('sellEmaCompare').checked?sellCandidates.filter(sellEmaDirectionPass):sellCandidates;
