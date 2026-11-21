@@ -744,13 +744,13 @@ async function runScan(){
   const sellEmaPass=x=>sellEmaDirectionPass(x)&&Number.isFinite(x.sellEma99)&&x.sellEma25<x.sellEma99;
   const sellInitialFilter=x=>passesOiFilters(x)&&(!$('sellNegative24h').checked||x.change<0)&&(!$('sellEmaCompare').checked||sellEmaPass(x));
   const signalRejectReason=(x,side,window)=>{
-   const state=side==='buy'?x.buyState:x.sellState,expected=side==='buy'?'up':'down';
+   const gateEnabled=side==='buy'?$('buyMacdGate').checked:$('sellMacdGate').checked;const state=side==='buy'?x.buyState:x.sellState,expected=gateEnabled?(side==='buy'?'up':'down'):'rsi';
    if(!state)return 'Indicator state unavailable';
    if(state.status==='insufficient-data')return 'Insufficient candle history: '+state.loadedCandles+'/'+state.requiredCandles+' candles loaded';
-   if(!Number.isFinite(state.crossIndex)||state.crossIndex<0)return 'No MACD crossover in loaded candles';
-   if(state.crossType!==expected)return 'Latest MACD crossover is '+(state.crossType==='up'?'bullish':'bearish');
-   if(state.age<1||state.age>window)return 'Crossover outside '+window+'-candle window';
-   if(!state.qualifies)return 'No qualifying RSI + MACD candle from crossover onward';
+   if(!Number.isFinite(state.crossIndex)||state.crossIndex<0)return gateEnabled?'No MACD crossover in loaded candles':'RSI has not entered the configured range within the candle window';
+   if(state.crossType!==expected)return gateEnabled?'Latest MACD crossover is '+(state.crossType==='up'?'bullish':'bearish'):'RSI-only qualification state unavailable';
+   if(state.age<1||state.age>window)return (gateEnabled?'Crossover':'RSI qualification')+' outside '+window+'-candle window';
+   if(!state.qualifies)return gateEnabled?'No qualifying RSI + MACD candle from crossover onward':'RSI is outside the configured range';
    if(!passesOiFilters(x))return 'Blocked by enabled Open Interest filter';
    if(side==='buy'){
     if($('buyPositive24h').checked&&!(x.change>0))return '24H change is not positive';
