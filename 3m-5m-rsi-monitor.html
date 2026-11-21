@@ -215,7 +215,7 @@ function renderVolumePressureMatrix(force=false){
  const symbols=Array.isArray(priceWsSymbols)?priceWsSymbols:[];
  const rowsHtml=[];
  let ready=0;
- for(const symbol of symbols.slice(0,40)){
+ for(const symbol of symbols.slice(0,60)){
   const rows=candleCache.get(symbol+'|'+tf)||[];
   const closed=rows.filter(row=>Number(row[6])<now&&Number(row[7])>0);
   if(closed.length<22)continue;
@@ -234,7 +234,7 @@ function renderVolumePressureMatrix(force=false){
   ready++;
  }
  $('volumeMatrixRows').innerHTML=rowsHtml.length?rowsHtml.join(''):'<tr><td colspan="4" class="muted">Waiting for enough completed-candle history on this timeframe.</td></tr>';
- $('volumeMatrixStatus').textContent=ready+' / '+Math.min(symbols.length,40)+' symbols · '+tf.toUpperCase()+' · closed candles';
+ $('volumeMatrixStatus').textContent=ready+' / '+Math.min(symbols.length,60)+' symbols · '+tf.toUpperCase()+' · closed candles';
 }
 $('volumeMatrixTf').addEventListener('change',()=>renderVolumePressureMatrix(true));
 
