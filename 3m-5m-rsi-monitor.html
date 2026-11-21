@@ -32,10 +32,10 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 <p class="sub">Independent Binance USDⓈ-M USDT-margined scanner · Crypto + TradFi · No trading · No API key required</p>
 <section class="panel">
  <div class="controls">
-  <div class="field"><label for="universeMode">UNIVERSE SELECTION</label><select id="universeMode"><option value="percent" selected>24H change threshold</option><option value="count">Top X / Bottom X</option><option value="ema">15M Strong EMA · Top/Bottom 50</option></select></div>
-  <div class="field" id="thresholdControl"><label for="universeSize">24H CHANGE THRESHOLD (%)</label><input id="universeSize" type="number" min="1" step="1" value="10"></div><div class="field" id="emaUniverseInfo" style="display:none"><label>15M EMA UNIVERSE</label><div class="note">Top 50 gainers + bottom 50 losers → up to 20 bullish + 20 bearish matches. Uses closed 15M candles; refresh every 5 minutes.</div></div>
-  <div class="field" id="countControls" style="display:none"><label for="topCount">TOP GAINERS</label><input id="topCount" type="number" min="0" step="1" value="10"></div>
-  <div class="field" id="bottomCountControl" style="display:none"><label for="bottomCount">BOTTOM LOSERS</label><input id="bottomCount" type="number" min="0" step="1" value="10"></div>
+  <div class="field"><label for="universeMode">UNIVERSE SELECTION</label><select id="universeMode"><option value="percent">24H change threshold</option><option value="count" selected>Top X / Bottom X</option><option value="ema">15M Strong EMA · Top/Bottom 50</option></select></div>
+  <div class="field" id="thresholdControl" style="display:none"><label for="universeSize">24H CHANGE THRESHOLD (%)</label><input id="universeSize" type="number" min="1" step="1" value="10"></div><div class="field" id="emaUniverseInfo" style="display:none"><label>15M EMA UNIVERSE</label><div class="note">Top 50 gainers + bottom 50 losers → up to 20 bullish + 20 bearish matches. Uses closed 15M candles; refresh every 5 minutes.</div></div>
+  <div class="field" id="countControls"><label for="topCount">TOP GAINERS</label><input id="topCount" type="number" min="0" step="1" value="10"></div>
+  <div class="field" id="bottomCountControl"><label for="bottomCount">BOTTOM LOSERS</label><input id="bottomCount" type="number" min="0" step="1" value="10"></div>
   <div class="field"><label for="volume">MIN 24H QUOTE VOLUME (USDT)</label><input id="volume" type="number" min="0" step="100000" value="2000000"></div>
   <div class="field"><label for="period">RSI PERIOD</label><input id="period" type="number" min="2" max="100" value="14"></div>
   <div class="field"><label for="min3">MINIMUM 3M RSI (≥)</label><input id="min3" type="number" min="0" max="100" step="1" value="80"></div>
