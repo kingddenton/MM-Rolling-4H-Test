@@ -34,7 +34,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 <section class="panel">
  <div class="controls">
   <div class="field"><label for="universeMode">UNIVERSE SELECTION</label><select id="universeMode"><option value="percent">24H change threshold</option><option value="count" selected>Top X / Bottom X</option><option value="ema">15M Strong EMA · Top/Bottom 50</option></select></div>
-  <div class="field" id="thresholdControl" style="display:none"><label for="universeSize">24H CHANGE THRESHOLD (%)</label><input id="universeSize" type="number" min="1" step="1" value="10"></div><div class="field" id="emaUniverseInfo" style="display:none"><label>15M EMA UNIVERSE</label><div class="note">Top 50 gainers + bottom 50 losers → up to 20 bullish + 20 bearish matches. Uses closed 15M candles; refresh every 5 minutes.</div></div>
+  <div class="field" id="thresholdControl" style="display:none"><label for="universeSize">24H CHANGE THRESHOLD (%)</label><input id="universeSize" type="number" min="1" step="1" value="10"></div><div class="field" id="emaUniverseInfo"><label for="emaMaxPerSide">15M STRONG EMA REPLENISHMENT · MAX PER SIDE</label><input id="emaMaxPerSide" type="number" min="0" max="100" step="1" value="20"><div class="note">Checks Top 50 gainers + Bottom 50 losers using closed 15M candles. Adds up to this many bullish and bearish EMA matches to whichever primary universe is selected. Refreshes with each scan.</div></div>
   <div class="field" id="countControls"><label for="topCount">TOP GAINERS</label><input id="topCount" type="number" min="0" step="1" value="10"></div>
   <div class="field" id="bottomCountControl"><label for="bottomCount">BOTTOM LOSERS</label><input id="bottomCount" type="number" min="0" step="1" value="10"></div>
   <div class="field"><label for="volume">MIN 24H QUOTE VOLUME (USDT)</label><input id="volume" type="number" min="0" step="100000" value="2000000"></div>
@@ -154,7 +154,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 const API='https://fapi.binance.com';
 const $=id=>document.getElementById(id);
 const SETTINGS_KEY='rsi-monitor-settings-v1';
-const settingIds=['priceChangeThreshold','universeMode','universeSize','topCount','bottomCount','volume','period','buyTf','buy2Tf','sellTf','buy2ChangeMin','buy2ChangeMax','buy2EmaCompare','buy2Positive24h','buy2RsiMin','buy2RsiMax','buy2MacdCandles','buyChangeMin','buyChangeMax','sellChangeMin','sellChangeMax','buyEmaCompare','sellEmaCompare','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','oi1Enabled','oi1Min','oi1Max','oi3Enabled','oi3Min','oi3Max','oi5Enabled','oi5Min','oi5Max','negativeMacdRsi','workers','refresh','continuous','buyPositive24h','sellNegative24h'];
+const settingIds=['priceChangeThreshold','universeMode','universeSize','topCount','bottomCount','volume','period','buyTf','buy2Tf','sellTf','buy2ChangeMin','buy2ChangeMax','buy2EmaCompare','buy2Positive24h','buy2RsiMin','buy2RsiMax','buy2MacdCandles','buyChangeMin','buyChangeMax','sellChangeMin','sellChangeMax','buyEmaCompare','sellEmaCompare','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','oi1Enabled','oi1Min','oi1Max','oi3Enabled','oi3Min','oi3Max','oi5Enabled','oi5Min','oi5Max','negativeMacdRsi','workers','refresh','continuous','buyPositive24h','sellNegative24h','emaMaxPerSide'];
 function loadSettings(){
  try{
   const saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
@@ -616,15 +616,41 @@ async function runScan(){
   const selectedMap=new Map();
   gainers.forEach(x=>selectedMap.set(x.symbol,x));
   losers.forEach(x=>{if(!selectedMap.has(x.symbol))selectedMap.set(x.symbol,x)});
-  let universe=(mode==='ema'?[...new Map([...ranked.slice(0,50),...ranked.slice(-50)].map(x=>[x.symbol,x])).values()]:[...selectedMap.values()].sort((a,b)=>Math.abs(b.change)-Math.abs(a.change)).sort((a,b)=>a.change-b.change)).map((x,i)=>({...x,universeNumber:i+1}));
+  // The EMA mode remains available as a standalone base universe; in all modes,
+  // EMA-qualified candidates are also added as replenishment to the selected universe.
+  const emaCandidatePool=[...new Map([...ranked.slice(0,50),...ranked.slice(-50)].map(x=>[x.symbol,x])).values()];
+  let universe=(mode==='ema'?emaCandidatePool:[...selectedMap.values()].sort((a,b)=>a.change-b.change)).map((x,i)=>({...x,universeNumber:i+1}));
   const retainedSymbols=new Set([...retainedBuySetups.values(),...retainedBuy2Setups.values(),...retainedSellSetups.values()].map(x=>x.symbol));
   const scanSymbols=new Set(universe.map(x=>x.symbol));
   for(const symbol of retainedSymbols){if(scanSymbols.has(symbol))continue;const market=eligible.find(x=>x.symbol===symbol);if(market){universe.push({...market,retainedSetup:true});scanSymbols.add(symbol);}}
+  const emaCap=Math.max(0,Math.min(100,Math.floor(Number($('emaMaxPerSide').value)||0)));
+  const emaProbe=await mapLimit(emaCandidatePool,workers,async item=>{
+   try{
+    const rows=await getCachedKlines(item.symbol,'15m');
+    const closes=rows.slice(0,-1).map(k=>Number(k[4]));
+    const e7=emaLast(closes,7),e25=emaLast(closes,25),e99=emaLast(closes,99);
+    return {...item,ema7_15:e7,ema25_15:e25,ema99_15:e99};
+   }catch(error){return {...item,emaProbeError:error.message}}
+  },6);
+  const emaValid=emaProbe.filter(x=>Number.isFinite(x.ema7_15)&&Number.isFinite(x.ema25_15)&&Number.isFinite(x.ema99_15)&&x.ema99_15>0);
+  const emaBullish=emaValid.filter(x=>x.ema7_15>x.ema25_15&&x.ema25_15>x.ema99_15)
+   .map(x=>({...x,emaSide:'BULLISH',emaStrength:(x.ema7_15-x.ema99_15)/x.ema99_15*100}))
+   .sort((a,b)=>b.emaStrength-a.emaStrength).slice(0,emaCap);
+  const emaBearish=emaValid.filter(x=>x.ema7_15<x.ema25_15&&x.ema25_15<x.ema99_15)
+   .map(x=>({...x,emaSide:'BEARISH',emaStrength:(x.ema99_15-x.ema7_15)/x.ema99_15*100}))
+   .sort((a,b)=>b.emaStrength-a.emaStrength).slice(0,emaCap);
+  const emaAdded=[];
+  for(const item of [...emaBullish,...emaBearish]){
+   if(scanSymbols.has(item.symbol))continue;
+   const market=eligible.find(x=>x.symbol===item.symbol);
+   if(market){universe.push({...market,emaReplenished:true,emaSide:item.emaSide,emaStrength:item.emaStrength});scanSymbols.add(item.symbol);emaAdded.push(item.symbol);}
+  }
+  const emaSelectedCount=emaBullish.length+emaBearish.length;
   const candidateUniverse=universe;
   $('universeCount').textContent=universe.length;
   $('eligibleUniverseCount').textContent=eligibleCount;
   $('universeVolumeRule').textContent=fmt(minVol)+' USDT';
-  $('universeRule').textContent=mode==='ema'?'Top 50 gainers + bottom 50 losers · 15M EMA alignment':mode==='percent'?'Gainers ≥ +'+fmt(rawSize)+'% · Losers ≤ −'+fmt(rawSize)+'% (24H)':'Top '+gainers.length+' / Bottom '+losers.length+' · 24H price change';
+  $('universeRule').textContent=mode==='ema'?'15M EMA base universe + EMA replenishment':mode==='percent'?'Gainers ≥ +'+fmt(rawSize)+'% · Losers ≤ −'+fmt(rawSize)+'% (24H)':'Top '+gainers.length+' / Bottom '+losers.length+' · 24H price change';
   $('universeRows').innerHTML=universe.length?universe.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>—</td><td><b>'+x.symbol+'</b></td><td>—</td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">Not enough eligible coins to build a universe.</td></tr>';
    const period=Math.max(2,Math.min(100,Number($('period').value)||14));
   const buyTf=['1m','3m','5m'].includes($('buyTf').value)?$('buyTf').value:'3m';
@@ -675,24 +701,17 @@ async function runScan(){
    const sellPriceChange=sellCandle&&Number(sellCandle[1])>0?(Number(sellCandle[4])-Number(sellCandle[1]))/Number(sellCandle[1])*100:NaN;
    return {...item,buyTf,buy2Tf,sellTf,buyPriceChange,buy2PriceChange,sellPriceChange,buy2Rsi:rsiWilder(buy2Closes,period),buy2Ema7:emaLast(buy2Closes,7),buy2Ema25:emaLast(buy2Closes,25),buy2Ema99:emaLast(buy2Closes,99),buy2State:potentialBuyState(buy2Closes,period,buy2Min,buy2Max,buy2Required,buy2Times),buyEma7:emaLast(buyCloses,7),buyEma25:emaLast(buyCloses,25),buyEma99:emaLast(buyCloses,99),sellEma7:emaLast(sellCloses,7),sellEma25:emaLast(sellCloses,25),sellEma99:emaLast(sellCloses,99),ema7_15:emaLast(c15,7),ema25_15:emaLast(c15,25),ema99_15:emaLast(c15,99),st15:supertrend15mDirection(klines[3].slice(0,-1)),r1:rsiWilder(c1,period),r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),sellRsi:rsiWilder(sellCloses,period),buyState:potentialBuyState(buyCloses,period,buyMin,buyMax,required,buyTimes),sellState:potentialSellState(sellCloses,period,Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33)),Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42)),Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5)),sellTimes),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
   });
-  if(mode==='ema'){
-   const valid=results.filter(x=>x&&!x.error&&Number.isFinite(x.ema7_15)&&Number.isFinite(x.ema25_15)&&Number.isFinite(x.ema99_15)&&x.ema99_15>0);
-   const bullish=valid.filter(x=>x.ema7_15>x.ema25_15&&x.ema25_15>x.ema99_15).map(x=>({...x,emaSide:'BULLISH',emaStrength:(x.ema7_15-x.ema99_15)/x.ema99_15*100})).sort((a,b)=>b.emaStrength-a.emaStrength).slice(0,20).map((x,i)=>({...x,universeNumber:'B'+String(i+1).padStart(2,'0')}));
-   const bearish=valid.filter(x=>x.ema7_15<x.ema25_15&&x.ema25_15<x.ema99_15).map(x=>({...x,emaSide:'BEARISH',emaStrength:(x.ema99_15-x.ema7_15)/x.ema99_15*100})).sort((a,b)=>b.emaStrength-a.emaStrength).slice(0,20).map((x,i)=>({...x,universeNumber:'S'+String(i+1).padStart(2,'0')}));
-   universe=[...bullish,...bearish];results=universe.map(x=>({...x}));$('universeCount').textContent=universe.length;
-   $('universeRows').innerHTML=universe.length?universe.map(x=>'<tr><td>'+x.universeNumber+'</td><td class="'+(x.emaSide==='BULLISH'?'symbol-st-bull':'symbol-st-bear')+'">'+x.emaSide+'</td><td><b>'+x.symbol+'</b></td><td class="num">'+x.emaStrength.toFixed(3)+'%</td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">No strong 15M EMA alignments found in the top/bottom 50 candidates.</td></tr>';
-   $('universeRule').textContent='Top 50 gainers + bottom 50 losers · up to 20 bullish + 20 bearish · ranked by EMA spread';
-  }
+
      const scanSelectedSymbols=new Set(candidateUniverse.map(x=>x.symbol));
    const retainedUniverseSymbols=new Set([...retainedBuySetups.values(),...retainedBuy2Setups.values(),...retainedSellSetups.values()].map(x=>x.symbol));
    const universeDiagHtml=ranked.map((item,index)=>{
     const rank=index+1,rankBottom=ranked.length-index;
     const selected=scanSelectedSymbols.has(item.symbol);
-    let reason=selected?(retainedUniverseSymbols.has(item.symbol)&&!(rank<=topCount||rankBottom<=bottomCount)?'Included: retained active setup':'Included by current universe rule'):'';
+    let reason=selected?(retainedUniverseSymbols.has(item.symbol)?'Included: retained active setup':(candidateUniverse.find(x=>x.symbol===item.symbol)?.emaReplenished?'Added by 15M EMA replenishment':'Included by current universe rule')):'';
     if(!selected){
      if(mode==='count')reason='Outside Top '+topCount+' gainers and Bottom '+bottomCount+' losers';
      else if(mode==='percent')reason='24H change is inside ±'+fmt(rawSize)+'% threshold';
-     else if(mode==='ema')reason='Outside Top 50 / Bottom 50 EMA candidate pool';
+     else if(emaAdded.includes(item.symbol))reason='Added by 15M EMA replenishment';
     }
     return '<tr><td>#'+rank+'</td><td><b class="'+change24hClass(item.change)+'">'+item.symbol+'</b></td><td class="num">'+(item.change>=0?'+':'')+fmt(item.change)+'%</td><td>'+fmt(item.volume)+'</td><td>'+(selected?'<b>SELECTED</b>':'NOT SELECTED')+'</td><td>'+reason+'</td></tr>';
    }).join('');
@@ -846,8 +865,8 @@ function updateUniverseControls(){
  $('thresholdControl').style.display=countMode||emaMode?'none':'block';
  $('countControls').style.display=countMode?'block':'none';
  $('bottomCountControl').style.display=countMode?'block':'none';
- $('emaUniverseInfo').style.display=emaMode?'block':'none';
- if(emaMode&&$('refresh').value!=='300')$('refresh').value='300';
+ $('emaUniverseInfo').style.display='block';
+
 }
 $('universeMode').addEventListener('change',()=>{updateUniverseControls();saveSettings()});
 updateUniverseControls();
