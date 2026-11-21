@@ -543,13 +543,13 @@ function retainQualifiedSetups(rows,side,tf,window,initialFilter=()=>true,macdGa
   const row=current.get(record.symbol);
   if(!row)continue;
   const state=side==='buy'?row.buyState:row.sellState;
-  const expected=side==='buy'?'up':'down';
+  const expected=macdGate?(side==='buy'?'up':'down'):'rsi';
   if(!state||state.crossType!==expected||state.crossTime!==record.crossTime||state.age>window||state.age<1){store.delete(key);continue}
   record.row={...row,[side+'State']:{...state,qualifies:true}};
   record.age=state.age;
  }
  for(const row of rows){
-  const state=side==='buy'?row.buyState:row.sellState,expected=side==='buy'?'up':'down';
+  const state=side==='buy'?row.buyState:row.sellState,expected=macdGate?(side==='buy'?'up':'down'):'rsi';
   if(!state||!state.qualifies||state.crossType!==expected||!Number.isFinite(state.crossTime))continue;
   const key=row.symbol+'|'+tf;
   if(store.has(key))continue;
