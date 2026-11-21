@@ -701,7 +701,7 @@ async function runScan(){
   const sellEmaPass=x=>sellEmaDirectionPass(x)&&Number.isFinite(x.sellEma99)&&x.sellEma25<x.sellEma99;
   const sellInitialFilter=x=>passesOiFilters(x)&&(!$('sellNegative24h').checked||x.change<0)&&Number.isFinite(x.sellPriceChange)&&(sellChangeMin===null||x.sellPriceChange>=sellChangeMin)&&(sellChangeMax===null||x.sellPriceChange<=sellChangeMax)&&(!$('sellEmaCompare').checked||sellEmaPass(x));
   const signalRejectReason=(x,side,window)=>{
-   const state=side==='buy'?x.buyState:x.sellState,expected=side==='buy?'up':'down';
+   const state=side==='buy'?x.buyState:x.sellState,expected=side==='buy'?'up':'down';
    if(!state)return 'Indicator state unavailable';
    if(state.crossIndex<0)return 'No MACD crossover in loaded candles';
    if(state.crossType!==expected)return 'Latest MACD crossover is '+(state.crossType==='up'?'bullish':'bearish');
