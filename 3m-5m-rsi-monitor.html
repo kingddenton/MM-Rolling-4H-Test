@@ -400,10 +400,8 @@ function potentialBuyState(closes,period,minRsi,maxRsi,window){
  for(let i=crossIndex+1;i<closes.length;i++){
   const green=dif[i]>dea[i];
   const inRange=Number.isFinite(rsi[i])&&rsi[i]>=minRsi&&rsi[i]<=maxRsi;
-  if(!qualified){
-   if(green&&inRange)qualified=true;
-  }else if(!green||!inRange){
-   return {qualifies:false,age};
+  if(!qualified&&green&&inRange){
+   qualified=true;
   }
  }
  return {qualifies:qualified,age};
@@ -431,8 +429,7 @@ function potentialSellState(closes,period,minRsi,maxRsi,window){
  let qualified=false;
  for(let i=crossIndex+1;i<closes.length;i++){
   const red=dif[i]<dea[i],inRange=Number.isFinite(rsi[i])&&rsi[i]>=minRsi&&rsi[i]<=maxRsi;
-  if(!qualified){if(red&&inRange)qualified=true}
-  else if(!red||!inRange)return {qualifies:false,age};
+  if(!qualified&&red&&inRange)qualified=true;
  }
  return {qualifies:qualified,age};
 }
