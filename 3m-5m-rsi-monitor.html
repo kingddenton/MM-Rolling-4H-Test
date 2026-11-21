@@ -663,7 +663,7 @@ async function runScan(){
    $('universeDiagSelected').textContent=String(candidateUniverse.length);
    $('universeDiagMissed').textContent=String(missedCount);
    $('universeDiagnosticRows').innerHTML=universeDiagHtml||'<tr><td colspan="6">No eligible contracts.</td></tr>';
-   scanned').textContent=String(candidateUniverse.length);
+   $('scanned').textContent=String(candidateUniverse.length);
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
   const oiEnabled=[{tf:'1m',key:'oi1',window:60000},{tf:'3m',key:'oi3',window:180000},{tf:'5m',key:'oi5',window:300000}].filter(x=>$(x.key+'Enabled').checked);
   const oiValues=await mapLimit(universe,workers,async item=>{
