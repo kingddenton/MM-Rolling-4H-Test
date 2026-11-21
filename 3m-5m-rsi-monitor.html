@@ -76,6 +76,12 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <div class="note" id="perfMissing" style="margin-top:6px">Unstarted timeframe jobs will appear here.</div>
  <div class="wrap"><table class="perf-table"><thead><tr><th>Cycle</th><th>Workers</th><th>Duration</th><th>Coins</th><th>Started</th><th>Finished</th><th>Failed</th><th>Not started</th><th>Cache hits</th></tr></thead><tbody id="perfHistory"><tr><td colspan="9">No completed scans yet.</td></tr></tbody></table></div>
 </details>
+<details class="panel monitor-panel" id="signalDiagnostics">
+ <summary style="cursor:pointer;font-size:15px;font-weight:750;list-style:none">SIGNAL REJECTION DIAGNOSTICS</summary>
+ <p class="note" style="margin:5px 0">Shows why scanned coins did not qualify. Counts are separated by direction and include active filters; diagnostics do not change signal decisions.</p>
+ <div class="stats"><span>BUY: <b id="diagBuySummary">Waiting</b></span><span>SELL: <b id="diagSellSummary">Waiting</b></span><span>Scanned symbols: <b id="diagScanned">0</b></span></div>
+ <div class="wrap"><table class="perf-table"><thead><tr><th>Side</th><th>Symbol</th><th>Timeframe</th><th>MACD cross</th><th>Age</th><th>RSI</th><th>Decision / rejection reason</th></tr></thead><tbody id="signalDiagnosticRows"><tr><td colspan="7">Waiting for first scan.</td></tr></tbody></table></div>
+</details>
 <section class="panel">
  <details id="universeDetails">
   <summary style="cursor:pointer;font-weight:800;display:flex;justify-content:space-between;gap:12px;align-items:center"><span>Selected Universe · <span id="universeCount">0</span> coins</span><span class="note">Tap to collapse / expand</span></summary>
@@ -397,12 +403,10 @@ function potentialBuyState(closes,period,minRsi,maxRsi,window,times=[]){
  const age=closes.length-crossIndex;
  if(age<1||age>window)return {qualifies:false,age,crossType,crossIndex,crossTime:times[crossIndex]??crossIndex};
  let qualified=false,qualifiedIndex=-1;
- for(let i=crossIndex+1;i<closes.length;i++){
+ for(let i=crossIndex;i<closes.length;i++){
   const green=dif[i]>dea[i];
   const inRange=Number.isFinite(rsi[i])&&rsi[i]>=minRsi&&rsi[i]<=maxRsi;
-  if(!qualified&&green&&inRange){
-   qualified=true;qualifiedIndex=i;
-  }
+  if(!qualified&&green&&inRange){qualified=true;qualifiedIndex=i;}
  }
  return {qualifies:qualified,age,crossType,crossIndex,crossTime:times[crossIndex]??crossIndex,qualifiedIndex};
 }
@@ -427,7 +431,7 @@ function potentialSellState(closes,period,minRsi,maxRsi,window,times=[]){
  const age=closes.length-crossIndex;
  if(age<1||age>window)return {qualifies:false,age,crossType,crossIndex,crossTime:times[crossIndex]??crossIndex};
  let qualified=false,qualifiedIndex=-1;
- for(let i=crossIndex+1;i<closes.length;i++){
+ for(let i=crossIndex;i<closes.length;i++){
   const red=dif[i]<dea[i],inRange=Number.isFinite(rsi[i])&&rsi[i]>=minRsi&&rsi[i]<=maxRsi;
   if(!qualified&&red&&inRange){qualified=true;qualifiedIndex=i;}
  }
@@ -573,6 +577,9 @@ async function runScan(){
   gainers.forEach(x=>selectedMap.set(x.symbol,x));
   losers.forEach(x=>{if(!selectedMap.has(x.symbol))selectedMap.set(x.symbol,x)});
   let universe=(mode==='ema'?[...new Map([...ranked.slice(0,50),...ranked.slice(-50)].map(x=>[x.symbol,x])).values()]:[...selectedMap.values()].sort((a,b)=>Math.abs(b.change)-Math.abs(a.change)).sort((a,b)=>a.change-b.change)).map((x,i)=>({...x,universeNumber:i+1}));
+  const retainedSymbols=new Set([...retainedBuySetups.values(),...retainedSellSetups.values()].map(x=>x.symbol));
+  const scanSymbols=new Set(universe.map(x=>x.symbol));
+  for(const symbol of retainedSymbols){if(scanSymbols.has(symbol))continue;const market=eligible.find(x=>x.symbol===symbol);if(market){universe.push({...market,retainedSetup:true});scanSymbols.add(symbol);}}
   const candidateUniverse=universe;
   $('universeCount').textContent=universe.length;
   $('eligibleUniverseCount').textContent=eligibleCount;
@@ -630,13 +637,6 @@ async function runScan(){
    universe=[...bullish,...bearish];results=universe.map(x=>({...x}));$('universeCount').textContent=universe.length;
    $('universeRows').innerHTML=universe.length?universe.map(x=>'<tr><td>'+x.universeNumber+'</td><td class="'+(x.emaSide==='BULLISH'?'symbol-st-bull':'symbol-st-bear')+'">'+x.emaSide+'</td><td><b>'+x.symbol+'</b></td><td class="num">'+x.emaStrength.toFixed(3)+'%</td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">No strong 15M EMA alignments found in the top/bottom 50 candidates.</td></tr>';
    $('universeRule').textContent='Top 50 gainers + bottom 50 losers · up to 20 bullish + 20 bearish · ranked by EMA spread';
-  }
-  const retainedSymbols=new Set([...retainedBuySetups.values(),...retainedSellSetups.values()].map(x=>x.symbol));
-  const scanSymbols=new Set(universe.map(x=>x.symbol));
-  for(const symbol of retainedSymbols){
-   if(scanSymbols.has(symbol))continue;
-   const market=eligible.find(x=>x.symbol===symbol);
-   if(market){universe.push({...market,retainedSetup:true});scanSymbols.add(symbol);}
   }
   $('scanned').textContent=String(candidateUniverse.length);
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
@@ -700,6 +700,38 @@ async function runScan(){
   const sellEmaDirectionPass=x=>Number.isFinite(x.sellEma7)&&Number.isFinite(x.sellEma25)&&x.sellEma7<x.sellEma25;
   const sellEmaPass=x=>sellEmaDirectionPass(x)&&Number.isFinite(x.sellEma99)&&x.sellEma25<x.sellEma99;
   const sellInitialFilter=x=>passesOiFilters(x)&&(!$('sellNegative24h').checked||x.change<0)&&Number.isFinite(x.sellPriceChange)&&(sellChangeMin===null||x.sellPriceChange>=sellChangeMin)&&(sellChangeMax===null||x.sellPriceChange<=sellChangeMax)&&(!$('sellEmaCompare').checked||sellEmaDirectionPass(x));
+  const signalRejectReason=(x,side,window)=>{
+   const state=side==='buy'?x.buyState:x.sellState,expected=side==='buy?'up':'down';
+   if(!state)return 'Indicator state unavailable';
+   if(state.crossIndex<0)return 'No MACD crossover in loaded candles';
+   if(state.crossType!==expected)return 'Latest MACD crossover is '+(state.crossType==='up'?'bullish':'bearish');
+   if(state.age<1||state.age>window)return 'Crossover outside '+window+'-candle window';
+   if(!state.qualifies)return 'No qualifying RSI + MACD candle from crossover onward';
+   if(!passesOiFilters(x))return 'Blocked by enabled Open Interest filter';
+   if(side==='buy'){
+    if($('buyPositive24h').checked&&!(x.change>0))return '24H change is not positive';
+    if(!Number.isFinite(x.buyPriceChange))return 'Buy timeframe price change unavailable';
+    if(buyChangeMin!==null&&x.buyPriceChange<buyChangeMin)return 'Below Buy TF minimum price change';
+    if(buyChangeMax!==null&&x.buyPriceChange>buyChangeMax)return 'Above Buy TF maximum price change';
+    if($('buyEmaCompare').checked&&!buyEmaDirectionPass(x))return 'EMA 7 is not above EMA 25';
+   }else{
+    if($('sellNegative24h').checked&&!(x.change<0))return '24H change is not negative';
+    if(!Number.isFinite(x.sellPriceChange))return 'Sell timeframe price change unavailable';
+    if(sellChangeMin!==null&&x.sellPriceChange<sellChangeMin)return 'Below Sell TF minimum price change';
+    if(sellChangeMax!==null&&x.sellPriceChange>sellChangeMax)return 'Above Sell TF maximum price change';
+    if($('sellEmaCompare').checked&&!sellEmaDirectionPass(x))return 'EMA 7 is not below EMA 25';
+   }
+   return 'Qualified / retained';
+  };
+  const diagRows=[];
+  for(const x of results){if(!x||x.error)continue;for(const side of ['buy','sell']){
+   const state=side==='buy'?x.buyState:x.sellState,window=side==='buy'?required:sellRequired;
+   const reason=signalRejectReason(x,side,window);
+   if(state&&(state.crossIndex>=0||state.qualifies))diagRows.push({side,symbol:x.symbol,tf:side==='buy'?buyTf:sellTf,state,reason,rsi:side==='buy'?x.buyRsi:x.sellRsi});
+  }}
+  const summarizeReasons=side=>{const counts={};for(const x of diagRows.filter(y=>y.side===side))counts[x.reason]=(counts[x.reason]||0)+1;return Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+': '+v).join(' · ')||'No crossover candidates';};
+  $('diagBuySummary').textContent=summarizeReasons('buy');$('diagSellSummary').textContent=summarizeReasons('sell');$('diagScanned').textContent=results.length;
+  $('signalDiagnosticRows').innerHTML=diagRows.length?diagRows.sort((a,b)=>(a.side===b.side?0:a.side==='buy'?-1:1)||a.symbol.localeCompare(b.symbol)).slice(0,200).map(x=>'<tr><td>'+x.side.toUpperCase()+'</td><td><b>'+x.symbol+'</b></td><td>'+x.tf.toUpperCase()+'</td><td>'+x.state.crossType.toUpperCase()+'</td><td>'+x.state.age+'/'+(x.side==='buy'?required:sellRequired)+'</td><td>'+fmt(x.rsi)+'</td><td>'+x.reason+'</td></tr>').join(''):'<tr><td colspan="7">No crossover candidates found in this scan.</td></tr>';
   const retainedSells=retainQualifiedSetups(good,'sell',sellTf,sellRequired,sellInitialFilter);
   const sellCandidates=newestFirst(retainedSells,alertFirstSeen.sells);
   const sellEmaPassCount=sellCandidates.filter(sellEmaPass).length;
