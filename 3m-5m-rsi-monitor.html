@@ -683,7 +683,7 @@ async function runScan(){
   const buyChangeMin=$('buyChangeMin').value.trim()===''?null:Number($('buyChangeMin').value),buyChangeMax=$('buyChangeMax').value.trim()===''?null:Number($('buyChangeMax').value);
   const buyEmaDirectionPass=x=>Number.isFinite(x.buyEma7)&&Number.isFinite(x.buyEma25)&&x.buyEma7>x.buyEma25;
   const buyEmaPass=x=>buyEmaDirectionPass(x)&&Number.isFinite(x.buyEma99)&&x.buyEma25>x.buyEma99;
-  const buyInitialFilter=x=>passesOiFilters(x)&&(!$('buyPositive24h').checked||x.change>0)&&Number.isFinite(x.buyPriceChange)&&(buyChangeMin===null||x.buyPriceChange>=buyChangeMin)&&(buyChangeMax===null||x.buyPriceChange<=buyChangeMax)&&(!$('buyEmaCompare').checked||buyEmaDirectionPass(x));
+  const buyInitialFilter=x=>passesOiFilters(x)&&(!$('buyPositive24h').checked||x.change>0)&&Number.isFinite(x.buyPriceChange)&&(buyChangeMin===null||x.buyPriceChange>=buyChangeMin)&&(buyChangeMax===null||x.buyPriceChange<=buyChangeMax)&&(!$('buyEmaCompare').checked||buyEmaPass(x));
   const retainedBuys=retainQualifiedSetups(good,'buy',buyTf,required,buyInitialFilter);
   const buyCandidates=newestFirst(retainedBuys,alertFirstSeen.buys);
   const buyEmaPassCount=buyCandidates.filter(buyEmaPass).length;
@@ -699,7 +699,7 @@ async function runScan(){
   const sellChangeMin=$('sellChangeMin').value.trim()===''?null:Number($('sellChangeMin').value),sellChangeMax=$('sellChangeMax').value.trim()===''?null:Number($('sellChangeMax').value);
   const sellEmaDirectionPass=x=>Number.isFinite(x.sellEma7)&&Number.isFinite(x.sellEma25)&&x.sellEma7<x.sellEma25;
   const sellEmaPass=x=>sellEmaDirectionPass(x)&&Number.isFinite(x.sellEma99)&&x.sellEma25<x.sellEma99;
-  const sellInitialFilter=x=>passesOiFilters(x)&&(!$('sellNegative24h').checked||x.change<0)&&Number.isFinite(x.sellPriceChange)&&(sellChangeMin===null||x.sellPriceChange>=sellChangeMin)&&(sellChangeMax===null||x.sellPriceChange<=sellChangeMax)&&(!$('sellEmaCompare').checked||sellEmaDirectionPass(x));
+  const sellInitialFilter=x=>passesOiFilters(x)&&(!$('sellNegative24h').checked||x.change<0)&&Number.isFinite(x.sellPriceChange)&&(sellChangeMin===null||x.sellPriceChange>=sellChangeMin)&&(sellChangeMax===null||x.sellPriceChange<=sellChangeMax)&&(!$('sellEmaCompare').checked||sellEmaPass(x));
   const signalRejectReason=(x,side,window)=>{
    const state=side==='buy'?x.buyState:x.sellState,expected=side==='buy?'up':'down';
    if(!state)return 'Indicator state unavailable';
@@ -713,13 +713,13 @@ async function runScan(){
     if(!Number.isFinite(x.buyPriceChange))return 'Buy timeframe price change unavailable';
     if(buyChangeMin!==null&&x.buyPriceChange<buyChangeMin)return 'Below Buy TF minimum price change';
     if(buyChangeMax!==null&&x.buyPriceChange>buyChangeMax)return 'Above Buy TF maximum price change';
-    if($('buyEmaCompare').checked&&!buyEmaDirectionPass(x))return 'EMA 7 is not above EMA 25';
+    if($('buyEmaCompare').checked&&!buyEmaPass(x))return 'EMA alignment is not 7 > 25 > 99';
    }else{
     if($('sellNegative24h').checked&&!(x.change<0))return '24H change is not negative';
     if(!Number.isFinite(x.sellPriceChange))return 'Sell timeframe price change unavailable';
     if(sellChangeMin!==null&&x.sellPriceChange<sellChangeMin)return 'Below Sell TF minimum price change';
     if(sellChangeMax!==null&&x.sellPriceChange>sellChangeMax)return 'Above Sell TF maximum price change';
-    if($('sellEmaCompare').checked&&!sellEmaDirectionPass(x))return 'EMA 7 is not below EMA 25';
+    if($('sellEmaCompare').checked&&!sellEmaPass(x))return 'EMA alignment is not 7 < 25 < 99';
    }
    return 'Qualified / retained';
   };
