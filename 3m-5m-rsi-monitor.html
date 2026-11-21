@@ -632,7 +632,7 @@ async function runScan(){
     const e7=emaLast(closes,7),e25=emaLast(closes,25),e99=emaLast(closes,99);
     return {...item,ema7_15:e7,ema25_15:e25,ema99_15:e99};
    }catch(error){return {...item,emaProbeError:error.message}}
-  },Math.max(1,Math.min(20,Number($('workers').value)||8)));
+  },6);
   const emaValid=emaProbe.filter(x=>Number.isFinite(x.ema7_15)&&Number.isFinite(x.ema25_15)&&Number.isFinite(x.ema99_15)&&x.ema99_15>0);
   const emaBullish=emaValid.filter(x=>x.ema7_15>x.ema25_15&&x.ema25_15>x.ema99_15)
    .map(x=>({...x,emaSide:'BULLISH',emaStrength:(x.ema7_15-x.ema99_15)/x.ema99_15*100}))
