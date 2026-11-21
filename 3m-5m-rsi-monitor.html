@@ -631,7 +631,7 @@ async function runScan(){
     const e7=emaLast(closes,7),e25=emaLast(closes,25),e99=emaLast(closes,99);
     return {...item,ema7_15:e7,ema25_15:e25,ema99_15:e99};
    }catch(error){return {...item,emaProbeError:error.message}}
-  },6);
+  },Math.max(1,Math.min(20,Number($('workers').value)||8)));
   const emaValid=emaProbe.filter(x=>Number.isFinite(x.ema7_15)&&Number.isFinite(x.ema25_15)&&Number.isFinite(x.ema99_15)&&x.ema99_15>0);
   const emaBullish=emaValid.filter(x=>x.ema7_15>x.ema25_15&&x.ema25_15>x.ema99_15)
    .map(x=>({...x,emaSide:'BULLISH',emaStrength:(x.ema7_15-x.ema99_15)/x.ema99_15*100}))
@@ -647,6 +647,10 @@ async function runScan(){
   }
   const emaSelectedCount=emaBullish.length+emaBearish.length;
   const candidateUniverse=universe;
+  $('universeCount').textContent=universe.length;
+  $('universeRows').innerHTML=universe.length?universe.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+(x.emaReplenished?'<span class="'+(x.emaSide==='BULLISH'?'symbol-st-bull':'symbol-st-bear')+'">'+x.emaSide+' EMA</span>':'—')+'</td><td><b>'+x.symbol+'</b></td><td>'+(Number.isFinite(x.emaStrength)?x.emaStrength.toFixed(3)+'%':'—')+'</td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">Not enough eligible coins to build a universe.</td></tr>';
+  $('universeRule').textContent=(mode==='ema'?'15M EMA base universe':'Selected '+(mode==='percent'?'24H threshold':'Top/Bottom')+' universe')+' + up to '+emaCap+' bullish / '+emaCap+' bearish 15M EMA replenishment';
+
   $('universeCount').textContent=universe.length;
   $('eligibleUniverseCount').textContent=eligibleCount;
   $('universeVolumeRule').textContent=fmt(minVol)+' USDT';
