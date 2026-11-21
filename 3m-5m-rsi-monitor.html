@@ -115,13 +115,11 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <div class="field"><label>BUY 2 TF PRICE CHANGE FILTER (%) · OPTIONAL</label><div class="oi-range"><input id="buy2ChangeMin" type="number" step="0.01" placeholder="Min %"><input id="buy2ChangeMax" type="number" step="0.01" placeholder="Max %"></div></div><label class="direction-filter"><input id="buy2EmaCompare" type="checkbox" checked> Compare EMA 7 &gt; 25 &gt; 99 on Buy 2 timeframe</label><div class="note" id="buy2EmaSummary">EMA comparison will appear after scanning.</div>
  <div class="note" id="buy2Summary">—</div><div class="alert-lines" id="buy2Rows"><div class="muted">No potential buy setups yet.</div></div>
 </section>
-<section class="panel alert-card setup-alert-card"><div class="top"><b>Potential sell setups</b><span class="note" id="sellMatches">0</span></div><div class="field"><label for="sellTf">SELL TIMEFRAME</label><select id="sellTf"><option value="1m">1 minute</option><option value="3m" selected>3 minutes</option><option value="5m">5 minutes</option></select></div>
+<section class="panel alert-card setup-alert-card"><div class="top"><b>Potential sell setups</b><span class="note" id="sellMatches">0</span></div><div class="field"><label for="sellTf">SELL TIMEFRAME</label><select id="sellTf"><option value="1m">1 minute</option><option value="3m" selected>3 minutes</option><option value="5m" selected>5 minutes</option></select></div>
  <label class="direction-filter"><input id="sellNegative24h" type="checkbox"> Negative 24H change only</label>
  <div class="field"><label>SELL TF PRICE CHANGE FILTER (%) · OPTIONAL</label><div class="oi-range"><input id="sellChangeMin" type="number" step="0.01" placeholder="Min %"><input id="sellChangeMax" type="number" step="0.01" placeholder="Max %"></div></div><label class="direction-filter"><input id="sellEmaCompare" type="checkbox" checked> Compare EMA 7 &lt; 25 &lt; 99 on Sell timeframe</label><div class="note" id="sellEmaSummary">EMA comparison will appear after scanning.</div>
  <div class="note" id="sellSummary">—</div><div class="alert-lines" id="sellRows"><div class="muted">No potential sell setups yet.</div></div>
- 
 </section>
-</div>
 </div>
 <div class="signal-grid alert-card-grid">
 <div class="alert-stack">
@@ -129,25 +127,13 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
   <div class="top"><b class="price-alert-bear">24H HIGH REJECTION · SHORT WATCH</b><span class="note" id="highRejectCount">0/10</span></div>
   <div class="note">Within 1% of rolling 24H high, then a completed 1M candle closes bearish.</div>
   <div class="alert-lines" id="highRejectRows"><div class="muted">Waiting for 24H high rejection signals.</div></div>
- </section>
+</section>
 </div>
 <div class="alert-stack">
 <section class="panel alert-card price-combined-card">
  <div class="top"><b>1M PRICE CHANGE ALERTS</b><span class="note" id="priceCombinedCount">0</span></div>
  <div class="price-direction-block"><div class="top"><b class="price-alert-bull">BULLISH</b><span class="note" id="priceBullCount">0</span></div><div class="alert-lines" id="priceBullRows"><div class="muted">Waiting for bullish 1M alerts.</div></div></div>
  <div class="price-direction-block"><div class="top"><b class="price-alert-bear">BEARISH</b><span class="note" id="priceBearCount">0</span></div><div class="alert-lines" id="priceBearRows"><div class="muted">Waiting for bearish 1M alerts.</div></div></div>
-</section>
-</div>
-<section class="panel alert-card setup-alert-card"><div class="top"><b>Potential buy setups</b><span class="note" id="buyMatches">0</span></div><div class="field"><label for="buyTf">BUY TIMEFRAME</label><select id="buyTf"><option value="1m">1 minute</option><option value="3m" selected>3 minutes</option><option value="5m">5 minutes</option></select></div>
- <label class="direction-filter"><input id="buyPositive24h" type="checkbox"> Positive 24H change only</label>
- <div class="field"><label>BUY TF PRICE CHANGE FILTER (%) · OPTIONAL</label><div class="oi-range"><input id="buyChangeMin" type="number" step="0.01" placeholder="Min %"><input id="buyChangeMax" type="number" step="0.01" placeholder="Max %"></div></div><label class="direction-filter"><input id="buyEmaCompare" type="checkbox" checked> Compare EMA 7 &gt; 25 &gt; 99 on Buy timeframe</label><div class="note" id="buyEmaSummary">EMA comparison will appear after scanning.</div>
- <div class="note" id="buySummary">—</div><div class="alert-lines" id="buyRows"><div class="muted">No potential buy setups yet.</div></div>
-</section>
-<section class="panel alert-card setup-alert-card"><div class="top"><b>Potential sell setups</b><span class="note" id="sellMatches">0</span></div><div class="field"><label for="sellTf">SELL TIMEFRAME</label><select id="sellTf"><option value="1m">1 minute</option><option value="3m" selected>3 minutes</option><option value="5m">5 minutes</option></select></div>
- <label class="direction-filter"><input id="sellNegative24h" type="checkbox"> Negative 24H change only</label>
- <div class="field"><label>SELL TF PRICE CHANGE FILTER (%) · OPTIONAL</label><div class="oi-range"><input id="sellChangeMin" type="number" step="0.01" placeholder="Min %"><input id="sellChangeMax" type="number" step="0.01" placeholder="Max %"></div></div><label class="direction-filter"><input id="sellEmaCompare" type="checkbox" checked> Compare EMA 7 &lt; 25 &lt; 99 on Sell timeframe</label><div class="note" id="sellEmaSummary">EMA comparison will appear after scanning.</div>
- <div class="note" id="sellSummary">—</div><div class="alert-lines" id="sellRows"><div class="muted">No potential sell setups yet.</div></div>
- 
 </section>
 </div>
 </div>
