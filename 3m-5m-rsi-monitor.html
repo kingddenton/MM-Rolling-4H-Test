@@ -648,6 +648,12 @@ async function runScan(){
   }
   const emaSelectedCount=emaBullish.length+emaBearish.length;
   const candidateUniverse=universe;
+  $('universeCount').textContent=universe.length;
+  $('eligibleUniverseCount').textContent=eligibleCount;
+  $('universeVolumeRule').textContent=fmt(minVol)+' USDT';
+  $('universeRule').textContent=(mode==='ema'?'15M EMA base universe':'Selected '+(mode==='percent'?'24H threshold':'Top/Bottom')+' universe')+' + up to '+emaCap+' bullish / '+emaCap+' bearish 15M EMA replenishment';
+  $('universeRows').innerHTML=universe.length?universe.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+(x.emaReplenished?'<span class="'+(x.emaSide==='BULLISH'?'symbol-st-bull':'symbol-st-bear')+'">'+x.emaSide+' EMA</span>':(x.retainedSetup?'RETAINED':'—'))+'</td><td><b>'+x.symbol+'</b></td><td>'+(Number.isFinite(x.emaStrength)?x.emaStrength.toFixed(3)+'%':'—')+'</td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">Not enough eligible coins to build a universe.</td></tr>';
+
    const period=Math.max(2,Math.min(100,Number($('period').value)||14));
   const buyTf=['1m','3m','5m'].includes($('buyTf').value)?$('buyTf').value:'3m';
   const buy2Tf=['1m','3m','5m'].includes($('buy2Tf').value)?$('buy2Tf').value:'3m';
