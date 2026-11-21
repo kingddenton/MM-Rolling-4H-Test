@@ -631,6 +631,13 @@ async function runScan(){
    $('universeRows').innerHTML=universe.length?universe.map(x=>'<tr><td>'+x.universeNumber+'</td><td class="'+(x.emaSide==='BULLISH'?'symbol-st-bull':'symbol-st-bear')+'">'+x.emaSide+'</td><td><b>'+x.symbol+'</b></td><td class="num">'+x.emaStrength.toFixed(3)+'%</td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">No strong 15M EMA alignments found in the top/bottom 50 candidates.</td></tr>';
    $('universeRule').textContent='Top 50 gainers + bottom 50 losers · up to 20 bullish + 20 bearish · ranked by EMA spread';
   }
+  const retainedSymbols=new Set([...retainedBuySetups.values(),...retainedSellSetups.values()].map(x=>x.symbol));
+  const scanSymbols=new Set(universe.map(x=>x.symbol));
+  for(const symbol of retainedSymbols){
+   if(scanSymbols.has(symbol))continue;
+   const market=eligible.find(x=>x.symbol===symbol);
+   if(market){universe.push({...market,retainedSetup:true});scanSymbols.add(symbol);}
+  }
   $('scanned').textContent=String(candidateUniverse.length);
   const good=results.filter(x=>x&&!x.error&&Number.isFinite(x.r3)&&Number.isFinite(x.r5));
   const oiEnabled=[{tf:'1m',key:'oi1',window:60000},{tf:'3m',key:'oi3',window:180000},{tf:'5m',key:'oi5',window:300000}].filter(x=>$(x.key+'Enabled').checked);
