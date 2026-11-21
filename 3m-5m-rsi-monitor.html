@@ -495,14 +495,26 @@ function cacheKlineEvent(k){
 async function getCachedKlines(symbol,tf){
  const key=symbol+'|'+tf,cached=candleCache.get(key),freshAt=candleWsFresh.get(key);
  if(cached&&cached.length>=40&&freshAt&&Date.now()-freshAt<intervalMs(tf)*2){performance.cacheHits++;return cached}
- if(!cached){performance.cacheMisses++;const rows=await getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(symbol)+'&interval='+tf+'&limit=100');candleCache.set(key,rows.slice(-100));return candleCache.get(key)}
+ // Empty or partial WebSocket caches are not safe to extend from their last row.
+ // Recover them with a complete REST history request so MACD/RSI have enough closed candles.
+ if(!cached||cached.length<40){
+  performance.cacheMisses++;
+  const rows=await getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(symbol)+'&interval='+tf+'&limit=100');
+  if(!Array.isArray(rows)||rows.length===0)throw new Error('Binance returned no candle history for '+symbol+' '+tf);
+  const full=rows.slice(-100);candleCache.set(key,full);candleWsFresh.delete(key);return full;
+ }
  performance.cacheHits++;
- // REST remains the recovery path whenever the WebSocket cache is missing or stale.
+ // REST remains the recovery path whenever the WebSocket cache is stale.
  let rows=await getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(symbol)+'&interval='+tf+'&startTime='+cached[cached.length-1][0]+'&limit=100');
  if(rows.length>=100){rows=await getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(symbol)+'&interval='+tf+'&limit=100');candleCache.set(key,rows.slice(-100));return candleCache.get(key)}
  const merged=new Map(cached.map(row=>[Number(row[0]),row]));
  for(const row of rows)merged.set(Number(row[0]),row);
- const updated=[...merged.values()].sort((a,b)=>a[0]-b[0]).slice(-100);
+ let updated=[...merged.values()].sort((a,b)=>a[0]-b[0]).slice(-100);
+ if(updated.length<40){
+  const full=await getJson(API+'/fapi/v1/klines?symbol='+encodeURIComponent(symbol)+'&interval='+tf+'&limit=100');
+  if(!Array.isArray(full)||full.length===0)throw new Error('Binance returned no candle history for '+symbol+' '+tf);
+  updated=full.slice(-100);
+ }
  candleCache.set(key,updated);return updated;
 }
 async function mapLimit(items,limit,fn,progressDivisor=1){
