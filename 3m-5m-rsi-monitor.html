@@ -384,7 +384,7 @@ function macdState(closes,required){
  const lastDif=dif[dif.length-1],lastDea=dea[dea.length-1];return {bull:count>=required,count,dif:lastDif,dea:lastDea,hist:lastDif-lastDea};
 }
 function potentialBuyState(closes,period,minRsi,maxRsi,window,times=[]){
- if(closes.length<Math.max(40,period+1))return {qualifies:false,age:0,crossType:'',crossTime:null};
+ if(closes.length<Math.max(40,period+1))return {qualifies:false,age:0,crossType:'',crossIndex:-1,crossTime:null,status:'insufficient-data',loadedCandles:closes.length,requiredCandles:Math.max(40,period+1)};
  const ema=(values,p)=>{const k=2/(p+1);let v=values[0];const out=[v];for(let i=1;i<values.length;i++){v=values[i]*k+v*(1-k);out.push(v)}return out};
  const fast=ema(closes,12),slow=ema(closes,26);
  const dif=fast.map((v,i)=>v-slow[i]),dea=ema(dif,9);
@@ -417,7 +417,7 @@ function potentialBuyState(closes,period,minRsi,maxRsi,window,times=[]){
  return {qualifies:qualified,age,crossType,crossIndex,crossTime:times[crossIndex]??crossIndex,qualifiedIndex};
 }
 function potentialSellState(closes,period,minRsi,maxRsi,window,times=[]){
- if(closes.length<Math.max(40,period+1))return {qualifies:false,age:0,crossType:'',crossTime:null};
+ if(closes.length<Math.max(40,period+1))return {qualifies:false,age:0,crossType:'',crossIndex:-1,crossTime:null,status:'insufficient-data',loadedCandles:closes.length,requiredCandles:Math.max(40,period+1)};
  const ema=(values,p)=>{const k=2/(p+1);let v=values[0];const out=[v];for(let i=1;i<values.length;i++){v=values[i]*k+v*(1-k);out.push(v)}return out};
  const fast=ema(closes,12),slow=ema(closes,26);
  const dif=fast.map((v,i)=>v-slow[i]),dea=ema(dif,9);
@@ -728,7 +728,8 @@ async function runScan(){
   const signalRejectReason=(x,side,window)=>{
    const state=side==='buy'?x.buyState:x.sellState,expected=side==='buy'?'up':'down';
    if(!state)return 'Indicator state unavailable';
-   if(state.crossIndex<0)return 'No MACD crossover in loaded candles';
+   if(state.status==='insufficient-data')return 'Insufficient candle history: '+state.loadedCandles+'/'+state.requiredCandles+' candles loaded';
+   if(!Number.isFinite(state.crossIndex)||state.crossIndex<0)return 'No MACD crossover in loaded candles';
    if(state.crossType!==expected)return 'Latest MACD crossover is '+(state.crossType==='up'?'bullish':'bearish');
    if(state.age<1||state.age>window)return 'Crossover outside '+window+'-candle window';
    if(!state.qualifies)return 'No qualifying RSI + MACD candle from crossover onward';
@@ -756,7 +757,7 @@ async function runScan(){
   }}
   const summarizeReasons=side=>{const counts={};for(const x of diagRows.filter(y=>y.side===side))counts[x.reason]=(counts[x.reason]||0)+1;return Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+': '+v).join(' · ')||'No crossover candidates';};
   $('diagBuySummary').textContent=summarizeReasons('buy');$('diagSellSummary').textContent=summarizeReasons('sell');$('diagScanned').textContent=results.length+' coins · '+diagRows.length+' side checks';
-  $('signalDiagnosticRows').innerHTML=diagRows.length?diagRows.sort((a,b)=>(a.side===b.side?0:a.side==='buy'?-1:1)||a.symbol.localeCompare(b.symbol)).slice(0,400).map(x=>'<tr><td>'+x.side.toUpperCase()+'</td><td><b>'+x.symbol+'</b></td><td>'+x.tf.toUpperCase()+'</td><td>'+(x.state?.crossType?x.state.crossType.toUpperCase():'—')+'</td><td>'+(Number.isFinite(x.state?.age)?x.state.age+'/'+(x.side==='buy'?required:sellRequired):'—')+'</td><td>'+fmt(x.rsi)+'</td><td>'+x.reason+'</td></tr>').join(''):'<tr><td colspan="7">No scanned coins available for diagnostics.</td></tr>';
+  $('signalDiagnosticRows').innerHTML=diagRows.length?diagRows.sort((a,b)=>(a.side===b.side?0:a.side==='buy'?-1:1)||a.symbol.localeCompare(b.symbol)).slice(0,400).map(x=>'<tr><td>'+x.side.toUpperCase()+'</td><td><b>'+x.symbol+'</b></td><td>'+x.tf.toUpperCase()+'</td><td>'+(x.state?.crossType?x.state.crossType.toUpperCase():'—')+'</td><td>'+(Number.isFinite(x.state?.age)?x.state.age+'/'+(x.side==='buy'?required:sellRequired):'—')+'</td><td>'+(Number.isFinite(x.rsi)?fmt(x.rsi):'—')+'</td><td>'+x.reason+'</td></tr>').join(''):'<tr><td colspan="7">No scanned coins available for diagnostics.</td></tr>';
   const retainedSells=retainQualifiedSetups(good,'sell',sellTf,sellRequired,sellInitialFilter);
   const sellCandidates=newestFirst(retainedSells,alertFirstSeen.sells);
   const sellEmaPassCount=sellCandidates.filter(sellEmaPass).length;
