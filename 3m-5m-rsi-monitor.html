@@ -98,6 +98,17 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <details class="note"><summary>Stream diagnostics</summary><div class="stats"><span>Raw WS messages: <b id="priceRawMessageCount">0</b></span><span>Processing errors: <b id="priceProcessingErrors">0</b></span><span>Socket events: <b id="priceSocketEvents">—</b></span><span>Last close/error: <b id="priceSocketIssue">—</b></span><span>Stream check: <b id="priceSocketCheck">Waiting</b></span></div><p>First raw message: <code id="priceFirstRawMessage">Waiting for first message…</code></p></details>
  <p class="note" id="priceAlertExplanation">Uses Binance 1-minute WebSocket kline updates for every active USDT-margined perpetual pair passing the minimum 24H quote-volume filter. Alerts fire immediately at the configured positive or negative threshold, once per symbol per candle.</p>
 </section>
+<section class="panel" id="volumePressurePanel">
+ <div class="top"><b>VOLUME PRESSURE CONFIRMATION MATRIX</b><span class="note" id="volumeMatrixStatus">Waiting for WebSocket data</span></div>
+ <div class="controls" style="grid-template-columns:minmax(150px,220px) 1fr;align-items:end">
+  <div class="field"><label for="volumeMatrixTf">MATRIX TIMEFRAME</label><select id="volumeMatrixTf"><option value="1m" selected>1M</option><option value="3m">3M</option><option value="5m">5M</option><option value="15m">15M</option></select></div>
+  <div class="note">Display-only · completed candles · existing Binance WebSocket streams · no extra REST polling or subscriptions</div>
+ </div>
+ <div class="table-wrap" style="overflow:auto;margin-top:8px">
+  <table class="data-table" style="width:100%;min-width:620px"><thead><tr><th>SYMBOL</th><th>TAKER BUY</th><th>RELATIVE VOLUME</th><th>TRADE ACTIVITY</th></tr></thead><tbody id="volumeMatrixRows"><tr><td colspan="4" class="muted">Start scanning to receive market data.</td></tr></tbody></table>
+ </div>
+ <p class="note" style="margin:7px 0 0">Taker buy share: above 55% = buy pressure; below 45% = sell pressure. Relative volume and trade activity compare the latest completed candle with the previous 20 completed candles.</p>
+</section>
 <div class="setup-grid">
 <section class="panel alert-card setup-alert-card"><div class="top"><b>Potential buy setups</b><span class="note" id="buyMatches">0</span></div><div class="controls"><div class="field"><label for="buyRsiMin">BUY RSI MINIMUM</label><input id="buyRsiMin" type="number" min="0" max="100" step="1" value="60"></div><div class="field"><label for="buyRsiMax">BUY RSI MAXIMUM</label><input id="buyRsiMax" type="number" min="0" max="100" step="1" value="72"></div><div class="field"><label for="macdCandles">BUY QUALIFICATION CANDLES</label><input id="macdCandles" type="number" min="1" max="100" step="1" value="5"></div></div><div class="field"><label for="buyTf">BUY TIMEFRAME</label><select id="buyTf"><option value="1m">1 minute</option><option value="3m" selected>3 minutes</option><option value="5m">5 minutes</option></select></div>
  <label class="direction-filter"><input id="buyPositive24h" type="checkbox"> Positive 24H change only</label>
@@ -154,7 +165,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 const API='https://fapi.binance.com';
 const $=id=>document.getElementById(id);
 const SETTINGS_KEY='rsi-monitor-settings-v1';
-const settingIds=['priceChangeThreshold','universeMode','universeSize','topCount','bottomCount','volume','period','buyTf','buy2Tf','sellTf','buy2ChangeMin','buy2ChangeMax','buy2EmaCompare','buy2Positive24h','buy2RsiMin','buy2RsiMax','buy2MacdCandles','buyChangeMin','buyChangeMax','sellChangeMin','sellChangeMax','buyEmaCompare','sellEmaCompare','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','oi1Enabled','oi1Min','oi1Max','oi3Enabled','oi3Min','oi3Max','oi5Enabled','oi5Min','oi5Max','negativeMacdRsi','workers','refresh','continuous','buyPositive24h','sellNegative24h','emaMaxPerSide'];
+const settingIds=['priceChangeThreshold','universeMode','universeSize','topCount','bottomCount','volume','period','buyTf','buy2Tf','sellTf','buy2ChangeMin','buy2ChangeMax','buy2EmaCompare','buy2Positive24h','buy2RsiMin','buy2RsiMax','buy2MacdCandles','buyChangeMin','buyChangeMax','sellChangeMin','sellChangeMax','buyEmaCompare','sellEmaCompare','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','oi1Enabled','oi1Min','oi1Max','oi3Enabled','oi3Min','oi3Max','oi5Enabled','oi5Min','oi5Max','negativeMacdRsi','workers','refresh','continuous','buyPositive24h','sellNegative24h','emaMaxPerSide','volumeMatrixTf'];
 function loadSettings(){
  try{
   const saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
@@ -195,6 +206,38 @@ const performance={restRequests:0,cacheHits:0,cacheMisses:0,activeWorkers:0,peak
 let priceWs=new Map(),priceWsSymbols=[],priceWsSymbolsKey='',priceWsRetry=1000,priceWsStopped=true,priceWsOpen=0;
 const priceAlertedCandles=new Map(),priceAlertHistory=[];const latest24hChangeBySymbol=new Map();const rolling24hHighs=new Map(),highRejectAlertedCandles=new Map(),highRejectHistory=[];let priceUpdateCount=0,priceLastUpdate='—',priceLatestMove='—';let priceRawMessageCount=0,priceProcessingErrors=0,priceFirstRawMessage='';let priceSocketEvents=[],priceSocketIssues=[];
 function change24hClass(change){return Number.isFinite(Number(change))?(Number(change)>0?'coin-24h-positive':Number(change)<0?'coin-24h-negative':'coin-24h-neutral'):'coin-24h-neutral'}
+let lastVolumeMatrixRender=0;
+function renderVolumePressureMatrix(force=false){
+ const now=Date.now();
+ if(!force&&now-lastVolumeMatrixRender<1000)return;
+ lastVolumeMatrixRender=now;
+ const tf=['1m','3m','5m','15m'].includes($('volumeMatrixTf').value)?$('volumeMatrixTf').value:'1m';
+ const symbols=Array.isArray(priceWsSymbols)?priceWsSymbols:[];
+ const rowsHtml=[];
+ let ready=0;
+ for(const symbol of symbols.slice(0,40)){
+  const rows=candleCache.get(symbol+'|'+tf)||[];
+  const closed=rows.filter(row=>Number(row[6])<now&&Number(row[7])>0);
+  if(closed.length<22)continue;
+  const latest=closed[closed.length-1],prior=closed.slice(-21,-1);
+  const avgQuote=prior.reduce((sum,row)=>sum+Number(row[7]||0),0)/prior.length;
+  const avgTrades=prior.reduce((sum,row)=>sum+Number(row[8]||0),0)/prior.length;
+  const quote=Number(latest[7]),buyQuote=Number(latest[10]);
+  if(!(quote>0)||!(avgQuote>0)||!(avgTrades>0))continue;
+  const buyPct=Math.max(0,Math.min(100,buyQuote/quote*100));
+  const rvol=quote/avgQuote,tradeRatio=Number(latest[8])/avgTrades;
+  const pressure=buyPct>=55?'BUY PRESSURE':buyPct<=45?'SELL PRESSURE':'BALANCED';
+  const pressureClass=buyPct>=55?'symbol-st-bull':buyPct<=45?'symbol-st-bear':'muted';
+  const rvolLabel=rvol>=1.5?'HIGH':rvol<=0.7?'LOW':'NORMAL';
+  const tradeLabel=tradeRatio>=1.5?'HIGH':tradeRatio<=0.7?'LOW':'NORMAL';
+  rowsHtml.push('<tr><td><b>'+symbol+'</b></td><td class="'+pressureClass+'">'+buyPct.toFixed(1)+'% · '+pressure+'</td><td>'+rvol.toFixed(2)+'x · '+rvolLabel+'</td><td>'+tradeRatio.toFixed(2)+'x · '+tradeLabel+'</td></tr>');
+  ready++;
+ }
+ $('volumeMatrixRows').innerHTML=rowsHtml.length?rowsHtml.join(''):'<tr><td colspan="4" class="muted">Waiting for enough completed-candle history on this timeframe.</td></tr>';
+ $('volumeMatrixStatus').textContent=ready+' / '+Math.min(symbols.length,40)+' symbols · '+tf.toUpperCase()+' · closed candles';
+}
+$('volumeMatrixTf').addEventListener('change',()=>renderVolumePressureMatrix(true));
+
  function renderPriceAlerts(){
  const bullish=priceAlertHistory.filter(a=>a.side==='BULLISH').slice(0,10),bearish=priceAlertHistory.filter(a=>a.side==='BEARISH').slice(0,10);
  $('priceAlertCount').textContent=String(priceAlertHistory.length);
@@ -507,6 +550,7 @@ function cacheKlineEvent(k){
  rows.sort((a,b)=>Number(a[0])-Number(b[0]));
  if(rows.length>100)rows.splice(0,rows.length-100);
  candleCache.set(key,rows);candleWsFresh.set(key,Date.now());
+ if($('volumePressurePanel'))renderVolumePressureMatrix();
 }
 async function getCachedKlines(symbol,tf){
  const key=symbol+'|'+tf,cached=candleCache.get(key),freshAt=candleWsFresh.get(key);
