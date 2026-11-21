@@ -624,7 +624,8 @@ async function runScan(){
   const scanSymbols=new Set(universe.map(x=>x.symbol));
   for(const symbol of retainedSymbols){if(scanSymbols.has(symbol))continue;const market=eligible.find(x=>x.symbol===symbol);if(market){universe.push({...market,retainedSetup:true});scanSymbols.add(symbol);}}
   const emaCap=Math.max(0,Math.min(100,Math.floor(Number($('emaMaxPerSide').value)||0)));
-  const emaProbe=await mapLimit(emaCandidatePool,workers,async item=>{
+  const emaProbeWorkers=Math.max(1,Math.min(20,Number($('workers').value)||8));
+  const emaProbe=await mapLimit(emaCandidatePool,emaProbeWorkers,async item=>{
    try{
     const rows=await getCachedKlines(item.symbol,'15m');
     const closes=rows.slice(0,-1).map(k=>Number(k[4]));
@@ -647,15 +648,6 @@ async function runScan(){
   }
   const emaSelectedCount=emaBullish.length+emaBearish.length;
   const candidateUniverse=universe;
-  $('universeCount').textContent=universe.length;
-  $('universeRows').innerHTML=universe.length?universe.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+(x.emaReplenished?'<span class="'+(x.emaSide==='BULLISH'?'symbol-st-bull':'symbol-st-bear')+'">'+x.emaSide+' EMA</span>':'—')+'</td><td><b>'+x.symbol+'</b></td><td>'+(Number.isFinite(x.emaStrength)?x.emaStrength.toFixed(3)+'%':'—')+'</td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">Not enough eligible coins to build a universe.</td></tr>';
-  $('universeRule').textContent=(mode==='ema'?'15M EMA base universe':'Selected '+(mode==='percent'?'24H threshold':'Top/Bottom')+' universe')+' + up to '+emaCap+' bullish / '+emaCap+' bearish 15M EMA replenishment';
-
-  $('universeCount').textContent=universe.length;
-  $('eligibleUniverseCount').textContent=eligibleCount;
-  $('universeVolumeRule').textContent=fmt(minVol)+' USDT';
-  $('universeRule').textContent=mode==='ema'?'15M EMA base universe + EMA replenishment':mode==='percent'?'Gainers ≥ +'+fmt(rawSize)+'% · Losers ≤ −'+fmt(rawSize)+'% (24H)':'Top '+gainers.length+' / Bottom '+losers.length+' · 24H price change';
-  $('universeRows').innerHTML=universe.length?universe.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>—</td><td><b>'+x.symbol+'</b></td><td>—</td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">Not enough eligible coins to build a universe.</td></tr>';
    const period=Math.max(2,Math.min(100,Number($('period').value)||14));
   const buyTf=['1m','3m','5m'].includes($('buyTf').value)?$('buyTf').value:'3m';
   const buy2Tf=['1m','3m','5m'].includes($('buy2Tf').value)?$('buy2Tf').value:'3m';
