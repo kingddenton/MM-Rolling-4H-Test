@@ -749,14 +749,14 @@ async function runScan(){
    return 'Qualified / retained';
   };
   const diagRows=[];
-  for(const x of results){if(!x||x.error)continue;for(const side of ['buy','sell']){
+  for(const x of results){if(!x)continue;for(const side of ['buy','sell']){
    const state=side==='buy'?x.buyState:x.sellState,window=side==='buy'?required:sellRequired;
-   const reason=signalRejectReason(x,side,window);
-   if(state&&(state.crossIndex>=0||state.qualifies))diagRows.push({side,symbol:x.symbol,tf:side==='buy'?buyTf:sellTf,state,reason,rsi:side==='buy'?x.buyRsi:x.sellRsi});
+   const reason=x.error?'Candle data fetch failed: '+x.error:signalRejectReason(x,side,window);
+   diagRows.push({side,symbol:x.symbol,tf:side==='buy'?buyTf:sellTf,state,reason,rsi:side==='buy'?x.buyRsi:x.sellRsi,error:!!x.error});
   }}
   const summarizeReasons=side=>{const counts={};for(const x of diagRows.filter(y=>y.side===side))counts[x.reason]=(counts[x.reason]||0)+1;return Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+': '+v).join(' · ')||'No crossover candidates';};
-  $('diagBuySummary').textContent=summarizeReasons('buy');$('diagSellSummary').textContent=summarizeReasons('sell');$('diagScanned').textContent=results.length;
-  $('signalDiagnosticRows').innerHTML=diagRows.length?diagRows.sort((a,b)=>(a.side===b.side?0:a.side==='buy'?-1:1)||a.symbol.localeCompare(b.symbol)).slice(0,200).map(x=>'<tr><td>'+x.side.toUpperCase()+'</td><td><b>'+x.symbol+'</b></td><td>'+x.tf.toUpperCase()+'</td><td>'+x.state.crossType.toUpperCase()+'</td><td>'+x.state.age+'/'+(x.side==='buy'?required:sellRequired)+'</td><td>'+fmt(x.rsi)+'</td><td>'+x.reason+'</td></tr>').join(''):'<tr><td colspan="7">No crossover candidates found in this scan.</td></tr>';
+  $('diagBuySummary').textContent=summarizeReasons('buy');$('diagSellSummary').textContent=summarizeReasons('sell');$('diagScanned').textContent=results.length+' coins · '+diagRows.length+' side checks';
+  $('signalDiagnosticRows').innerHTML=diagRows.length?diagRows.sort((a,b)=>(a.side===b.side?0:a.side==='buy'?-1:1)||a.symbol.localeCompare(b.symbol)).slice(0,400).map(x=>'<tr><td>'+x.side.toUpperCase()+'</td><td><b>'+x.symbol+'</b></td><td>'+x.tf.toUpperCase()+'</td><td>'+(x.state?.crossType?x.state.crossType.toUpperCase():'—')+'</td><td>'+(Number.isFinite(x.state?.age)?x.state.age+'/'+(x.side==='buy'?required:sellRequired):'—')+'</td><td>'+fmt(x.rsi)+'</td><td>'+x.reason+'</td></tr>').join(''):'<tr><td colspan="7">No scanned coins available for diagnostics.</td></tr>';
   const retainedSells=retainQualifiedSetups(good,'sell',sellTf,sellRequired,sellInitialFilter);
   const sellCandidates=newestFirst(retainedSells,alertFirstSeen.sells);
   const sellEmaPassCount=sellCandidates.filter(sellEmaPass).length;
