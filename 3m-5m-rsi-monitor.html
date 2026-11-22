@@ -10,7 +10,7 @@
 main{max-width:1680px;margin:auto;padding:12px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
 h1{font-size:22px;margin:0}.tag{font-size:11px;font-weight:800;letter-spacing:.08em;color:#111827;background:var(--amber);padding:5px 9px;border-radius:6px}
 .sub{color:var(--muted);margin:5px 0 16px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px;margin:8px 0}
-.setup-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:start}.signal-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:start}
+.setup-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:start}.signal-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:start}
 .setup-grid>.panel{margin:0;min-width:0}
 .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:7px}.field label{display:block;color:var(--muted);font-size:11px;margin-bottom:5px;font-weight:700}
 input,select,button{width:100%;border:1px solid var(--line);border-radius:7px;padding:7px;background:#0c1625;color:var(--text);font:inherit}
@@ -22,10 +22,9 @@ button{cursor:pointer;font-weight:750;background:#1d4ed8;border-color:#2563eb}bu
 .status{color:var(--muted);font-size:12px;margin-top:10px}.stats{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:12px}.stats b{color:var(--text)}
 table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}th{color:var(--muted);font-size:11px;position:sticky;top:0;background:var(--panel)}
 .wrap{overflow:auto}.pill{display:inline-block;border-radius:20px;padding:3px 8px;font-size:11px;font-weight:800}.low{color:#06281c;background:var(--green)}.high{color:#3b0711;background:var(--red)}.mid{color:#3a2a05;background:#fcd34d}
-.monitor-panel{margin:14px 0}.perf-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}.perf-metric{background:#0c1625;border:1px solid var(--line);border-radius:8px;padding:9px;min-width:0}.perf-metric span{display:block;color:var(--muted);font-size:11px}.perf-metric strong{display:block;font-size:16px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.perf-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}.perf-table th,.perf-table td{text-align:left;padding:6px;border-top:1px solid var(--line)}.perf-table th{color:var(--muted)}@media(max-width:650px){.perf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}.price-alert-bull{color:var(--green);font-weight:800}.price-alert-bear{color:var(--red);font-weight:800}.price-alert-panel .stats{margin:8px 0}.alert-card-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;gap:14px}.alert-card{margin:0;min-width:0;min-height:340px;padding:18px}.alert-card .top{min-height:30px;align-items:center}.alert-lines{margin-top:9px;display:flex;flex-direction:column;gap:0}.alert-stack{display:flex;flex-direction:column;gap:14px;min-width:0}.alert-stack>.alert-card{margin:0;min-height:0}.high-reject-card{border-color:rgba(248,113,113,.45)}.price-combined-card{display:flex;flex-direction:column}.price-direction-block{padding:4px 0 10px}.price-direction-block+.price-direction-block{border-top:1px solid var(--line);padding-top:10px}.setup-entry-list{display:flex;flex-direction:column;min-height:462px}.setup-entry-list .setup-columns.header{flex:0 0 32px}.setup-entry-list .setup-columns.data{height:43px;min-height:43px;flex:0 0 43px;padding:8px 2px;overflow:hidden}.setup-entry-list .setup-columns.data.setup-empty{visibility:hidden}.setup-entry-list .setup-columns.data>*{min-width:0}.setup-alert-card{padding:18px}.setup-alert-card .setup-columns{grid-template-columns:minmax(0,1.15fr) repeat(5,minmax(0,.7fr));gap:7px}.setup-alert-card .setup-columns.header{font-size:12px}.setup-alert-card .setup-columns .setup-coin{font-size:18px}.setup-alert-card .setup-columns .setup-value{font-size:17px}.setup-alert-card .setup-columns.data{padding:12px 2px}.price-combined-card .alert-line strong{font-size:17px}.price-combined-card .alert-line .line-meta{font-size:16px}.alert-line{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line);font-size:14px;line-height:1.35}.alert-line:last-child{border-bottom:0}.alert-line strong{font-size:15px;overflow-wrap:anywhere}.alert-line .line-meta{font-size:15px;font-weight:700;color:var(--text);text-align:right;white-space:nowrap}.setup-columns{display:grid;grid-template-columns:minmax(0,1.15fr) repeat(5,minmax(0,.7fr));gap:4px;align-items:center}.setup-columns.header{padding:7px 2px 5px;border-bottom:1px solid var(--line);font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.02em}.setup-columns.header span:not(:first-child),.setup-columns .setup-value{text-align:right}.setup-columns .setup-coin{font-size:14px;min-width:0;overflow-wrap:anywhere}.setup-columns .setup-value{font-size:13px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}.setup-columns.data{padding:8px 2px;border-bottom:1px solid var(--line)}.alert-card .direction-filter{margin:8px 0}.alert-card .note{line-height:1.35}@media(max-width:1050px){.alert-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.price-combined-card{grid-column:1/-1;min-height:220px}.setup-alert-card{min-height:300px}}@media(max-width:600px){.alert-card-grid{grid-template-columns:1fr}.price-combined-card{grid-column:auto}.alert-card{min-height:180px}.setup-alert-card{min-height:260px}}.num{font-weight:800}.symbol-st-bull{color:var(--green)!important}.symbol-st-bear{color:var(--red)!important}.symbol-st-neutral{color:var(--text)!important}.muted{color:var(--muted)}.error{color:var(--red)}.note{font-size:12px;color:var(--muted)}
-@media(max-width:900px){.setup-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.signal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.setup-grid{grid-template-columns:1fr}.signal-grid{grid-template-columns:1fr}}
+.monitor-panel{margin:14px 0}.perf-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}.perf-metric{background:#0c1625;border:1px solid var(--line);border-radius:8px;padding:9px;min-width:0}.perf-metric span{display:block;color:var(--muted);font-size:11px}.perf-metric strong{display:block;font-size:16px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.perf-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}.perf-table th,.perf-table td{text-align:left;padding:6px;border-top:1px solid var(--line)}.perf-table th{color:var(--muted)}@media(max-width:650px){.perf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}.price-alert-bull{color:var(--green);font-weight:800}.price-alert-bear{color:var(--red);font-weight:800}.price-alert-panel .stats{margin:8px 0}.alert-card-grid{grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:14px}.alert-card{margin:0;min-width:0;min-height:340px;padding:18px}.alert-card .top{min-height:30px;align-items:center}.alert-lines{margin-top:9px;display:flex;flex-direction:column;gap:0}.price-combined-card{display:flex;flex-direction:column}.price-direction-block{padding:4px 0 10px}.price-direction-block+.price-direction-block{border-top:1px solid var(--line);padding-top:10px}.setup-alert-card{padding:18px}.setup-alert-card .setup-columns{grid-template-columns:minmax(0,1.15fr) repeat(5,minmax(0,.7fr));gap:7px}.setup-alert-card .setup-columns.header{font-size:12px}.setup-alert-card .setup-columns .setup-coin{font-size:18px}.setup-alert-card .setup-columns .setup-value{font-size:17px}.setup-alert-card .setup-columns.data{padding:12px 2px}.price-combined-card .alert-line strong{font-size:17px}.price-combined-card .alert-line .line-meta{font-size:16px}.alert-line{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line);font-size:14px;line-height:1.35}.alert-line:last-child{border-bottom:0}.alert-line strong{font-size:15px;overflow-wrap:anywhere}.alert-line .line-meta{font-size:15px;font-weight:700;color:var(--text);text-align:right;white-space:nowrap}.setup-columns{display:grid;grid-template-columns:minmax(0,1.15fr) repeat(5,minmax(0,.7fr));gap:4px;align-items:center}.setup-columns.header{padding:7px 2px 5px;border-bottom:1px solid var(--line);font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.02em}.setup-columns.header span:not(:first-child),.setup-columns .setup-value{text-align:right}.setup-columns .setup-coin{font-size:14px;min-width:0;overflow-wrap:anywhere}.setup-columns .setup-value{font-size:13px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}.setup-columns.data{padding:8px 2px;border-bottom:1px solid var(--line)}.alert-card .direction-filter{margin:8px 0}.alert-card .note{line-height:1.35}@media(max-width:1050px){.alert-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.price-combined-card{grid-column:1/-1;min-height:220px}.setup-alert-card{min-height:300px}}@media(max-width:600px){.alert-card-grid{grid-template-columns:1fr}.price-combined-card{grid-column:auto}.alert-card{min-height:180px}.setup-alert-card{min-height:260px}}.num{font-weight:800}.symbol-st-bull{color:var(--green)!important}.symbol-st-bear{color:var(--red)!important}.symbol-st-neutral{color:var(--text)!important}.muted{color:var(--muted)}.error{color:var(--red)}.note{font-size:12px;color:var(--muted)}
+@media(max-width:900px){.setup-grid{grid-template-columns:1fr}.signal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.signal-grid{grid-template-columns:1fr}}
 @media(max-width:600px){main{padding:11px}h1{font-size:19px}.panel{padding:11px}}
- .coin-24h-positive{color:var(--green)!important}.coin-24h-negative{color:var(--red)!important}.coin-24h-neutral{color:var(--muted)!important}
 </style>
 </head>
 <body><main>
@@ -41,6 +40,12 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
   <div class="field"><label for="period">RSI PERIOD</label><input id="period" type="number" min="2" max="100" value="14"></div>
   <div class="field"><label for="min3">MINIMUM 3M RSI (≥)</label><input id="min3" type="number" min="0" max="100" step="1" value="80"></div>
   <div class="field"><label for="min5">MINIMUM 5M RSI (≥)</label><input id="min5" type="number" min="0" max="100" step="1" value="80"></div>
+  <div class="field"><label for="buyRsiMin">BUY RSI MINIMUM</label><input id="buyRsiMin" type="number" min="0" max="100" step="1" value="60"></div>
+  <div class="field"><label for="buyRsiMax">BUY RSI MAXIMUM</label><input id="buyRsiMax" type="number" min="0" max="100" step="1" value="72"></div>
+  <div class="field"><label for="macdCandles">BUY QUALIFICATION CANDLES</label><input id="macdCandles" type="number" min="1" max="100" step="1" value="5"></div>
+  <div class="field"><label for="sellRsiMin">SELL RSI MINIMUM</label><input id="sellRsiMin" type="number" min="0" max="100" step="1" value="33"></div>
+  <div class="field"><label for="sellRsiMax">SELL RSI MAXIMUM</label><input id="sellRsiMax" type="number" min="0" max="100" step="1" value="42"></div>
+  <div class="field"><label for="sellMacdCandles">SELL QUALIFICATION CANDLES</label><input id="sellMacdCandles" type="number" min="1" max="100" step="1" value="5"></div>
   <div class="field oi-filter-field"><label>1M OPEN INTEREST FILTER</label><label class="direction-filter"><input id="oi1Enabled" type="checkbox"> Enable 1M OI filter</label><div class="oi-range"><input id="oi1Min" type="number" step="0.1" value="0" aria-label="1 minute OI minimum percentage"><input id="oi1Max" type="number" step="0.1" value="100" aria-label="1 minute OI maximum percentage"></div><small>Minimum % / Maximum %</small></div>
   <div class="field oi-filter-field"><label>3M OPEN INTEREST FILTER</label><label class="direction-filter"><input id="oi3Enabled" type="checkbox"> Enable 3M OI filter</label><div class="oi-range"><input id="oi3Min" type="number" step="0.1" value="0" aria-label="3 minute OI minimum percentage"><input id="oi3Max" type="number" step="0.1" value="100" aria-label="3 minute OI maximum percentage"></div><small>Minimum % / Maximum %</small></div>
   <div class="field oi-filter-field"><label>5M OPEN INTEREST FILTER</label><label class="direction-filter"><input id="oi5Enabled" type="checkbox"> Enable 5M OI filter</label><div class="oi-range"><input id="oi5Min" type="number" step="0.1" value="0" aria-label="5 minute OI minimum percentage"><input id="oi5Max" type="number" step="0.1" value="100" aria-label="5 minute OI maximum percentage"></div><small>Minimum % / Maximum %</small></div>
@@ -98,43 +103,23 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
  <details class="note"><summary>Stream diagnostics</summary><div class="stats"><span>Raw WS messages: <b id="priceRawMessageCount">0</b></span><span>Processing errors: <b id="priceProcessingErrors">0</b></span><span>Socket events: <b id="priceSocketEvents">—</b></span><span>Last close/error: <b id="priceSocketIssue">—</b></span><span>Stream check: <b id="priceSocketCheck">Waiting</b></span></div><p>First raw message: <code id="priceFirstRawMessage">Waiting for first message…</code></p></details>
  <p class="note" id="priceAlertExplanation">Uses Binance 1-minute WebSocket kline updates for every active USDT-margined perpetual pair passing the minimum 24H quote-volume filter. Alerts fire immediately at the configured positive or negative threshold, once per symbol per candle.</p>
 </section>
-<div class="setup-grid">
-<section class="panel alert-card setup-alert-card"><div class="top"><b>Potential buy setups</b><span class="note" id="buyMatches">0</span></div><div class="controls"><div class="field"><label for="buyRsiMin">BUY RSI MINIMUM</label><input id="buyRsiMin" type="number" min="0" max="100" step="1" value="60"></div><div class="field"><label for="buyRsiMax">BUY RSI MAXIMUM</label><input id="buyRsiMax" type="number" min="0" max="100" step="1" value="72"></div><div class="field"><label for="macdCandles">BUY QUALIFICATION CANDLES</label><input id="macdCandles" type="number" min="1" max="100" step="1" value="5"></div></div><div class="field"><label for="buyTf">BUY TIMEFRAME</label><select id="buyTf"><option value="1m">1 minute</option><option value="3m" selected>3 minutes</option><option value="5m">5 minutes</option></select></div>
- <label class="direction-filter"><input id="buyPositive24h" type="checkbox"> Positive 24H change only</label>
- <div class="field"><label>BUY TF PRICE CHANGE FILTER (%) · OPTIONAL</label><div class="oi-range"><input id="buyChangeMin" type="number" step="0.01" placeholder="Min %"><input id="buyChangeMax" type="number" step="0.01" placeholder="Max %"></div></div><label class="direction-filter"><input id="buyEmaCompare" type="checkbox" checked> Compare EMA 7 &gt; 25 &gt; 99 on Buy timeframe</label><div class="note" id="buyEmaSummary">EMA comparison will appear after scanning.</div>
- <div class="note" id="buySummary">—</div><div class="alert-lines" id="buyRows"><div class="muted">No potential buy setups yet.</div></div>
-</section>
-<section class="panel alert-card setup-alert-card"><div class="top"><b>Potential buy setups 2</b><span class="note" id="buy2Matches">0</span></div><div class="controls"><div class="field"><label for="buy2RsiMin">BUY 2 RSI MINIMUM</label><input id="buy2RsiMin" type="number" min="0" max="100" step="1" value="60"></div><div class="field"><label for="buy2RsiMax">BUY 2 RSI MAXIMUM</label><input id="buy2RsiMax" type="number" min="0" max="100" step="1" value="72"></div><div class="field"><label for="buy2MacdCandles">BUY 2 QUALIFICATION CANDLES</label><input id="buy2MacdCandles" type="number" min="1" max="100" step="1" value="5"></div></div><div class="field"><label for="buy2Tf">BUY 2 TIMEFRAME</label><select id="buy2Tf"><option value="1m">1 minute</option><option value="3m" selected>3 minutes</option><option value="5m">5 minutes</option></select></div>
- <label class="direction-filter"><input id="buy2Positive24h" type="checkbox"> Positive 24H change only</label>
- <div class="field"><label>BUY 2 TF PRICE CHANGE FILTER (%) · OPTIONAL</label><div class="oi-range"><input id="buy2ChangeMin" type="number" step="0.01" placeholder="Min %"><input id="buy2ChangeMax" type="number" step="0.01" placeholder="Max %"></div></div><label class="direction-filter"><input id="buy2EmaCompare" type="checkbox" checked> Compare EMA 7 &gt; 25 &gt; 99 on Buy 2 timeframe</label><div class="note" id="buy2EmaSummary">EMA comparison will appear after scanning.</div>
- <div class="note" id="buy2Summary">—</div><div class="alert-lines" id="buy2Rows"><div class="muted">No potential buy setups yet.</div></div>
-</section>
-<section class="panel alert-card setup-alert-card"><div class="top"><b>Potential sell setups</b><span class="note" id="sellMatches">0</span></div>
-<div class="controls">
-  <div class="field"><label for="sellRsiMin">SELL RSI MINIMUM</label><input id="sellRsiMin" type="number" min="0" max="100" step="1" value="33"></div>
-  <div class="field"><label for="sellRsiMax">SELL RSI MAXIMUM</label><input id="sellRsiMax" type="number" min="0" max="100" step="1" value="42"></div>
-  <div class="field"><label for="sellMacdCandles">SELL QUALIFICATION CANDLES</label><input id="sellMacdCandles" type="number" min="1" max="100" step="1" value="5"></div>
-</div><div class="field"><label for="sellTf">SELL TIMEFRAME</label><select id="sellTf"><option value="1m">1 minute</option><option value="3m" selected>3 minutes</option><option value="5m">5 minutes</option></select></div>
- <label class="direction-filter"><input id="sellNegative24h" type="checkbox"> Negative 24H change only</label>
- <div class="field"><label>SELL TF PRICE CHANGE FILTER (%) · OPTIONAL</label><div class="oi-range"><input id="sellChangeMin" type="number" step="0.01" placeholder="Min %"><input id="sellChangeMax" type="number" step="0.01" placeholder="Max %"></div></div><label class="direction-filter"><input id="sellEmaCompare" type="checkbox" checked> Compare EMA 7 &lt; 25 &lt; 99 on Sell timeframe</label><div class="note" id="sellEmaSummary">EMA comparison will appear after scanning.</div>
- <div class="note" id="sellSummary">—</div><div class="alert-lines" id="sellRows"><div class="muted">No potential sell setups yet.</div></div>
-</section>
-</div>
 <div class="signal-grid alert-card-grid">
-<div class="alert-stack">
-<section class="panel alert-card high-reject-card">
-  <div class="top"><b class="price-alert-bear">24H HIGH REJECTION · SHORT WATCH</b><span class="note" id="highRejectCount">0/10</span></div>
-  <div class="note">Within 1% of rolling 24H high, then a completed 1M candle closes bearish.</div>
-  <div class="alert-lines" id="highRejectRows"><div class="muted">Waiting for 24H high rejection signals.</div></div>
-</section>
-</div>
-<div class="alert-stack">
 <section class="panel alert-card price-combined-card">
  <div class="top"><b>1M PRICE CHANGE ALERTS</b><span class="note" id="priceCombinedCount">0</span></div>
  <div class="price-direction-block"><div class="top"><b class="price-alert-bull">BULLISH</b><span class="note" id="priceBullCount">0</span></div><div class="alert-lines" id="priceBullRows"><div class="muted">Waiting for bullish 1M alerts.</div></div></div>
  <div class="price-direction-block"><div class="top"><b class="price-alert-bear">BEARISH</b><span class="note" id="priceBearCount">0</span></div><div class="alert-lines" id="priceBearRows"><div class="muted">Waiting for bearish 1M alerts.</div></div></div>
 </section>
-</div>
+<section class="panel alert-card setup-alert-card"><div class="top"><b>Potential buy setups</b><span class="note" id="buyMatches">0</span></div><div class="field"><label for="buyTf">BUY TIMEFRAME</label><select id="buyTf"><option value="1m">1 minute</option><option value="3m" selected>3 minutes</option><option value="5m">5 minutes</option></select></div>
+ <label class="direction-filter"><input id="buyPositive24h" type="checkbox"> Positive 24H change only</label>
+ <div class="field"><label>BUY TF PRICE CHANGE FILTER (%) · OPTIONAL</label><div class="oi-range"><input id="buyChangeMin" type="number" step="0.01" placeholder="Min %"><input id="buyChangeMax" type="number" step="0.01" placeholder="Max %"></div></div><label class="direction-filter"><input id="buyEmaCompare" type="checkbox" checked> Compare EMA 7 &gt; 25 &gt; 99 on Buy timeframe</label><div class="note" id="buyEmaSummary">EMA comparison will appear after scanning.</div>
+ <div class="note" id="buySummary">—</div><div class="alert-lines" id="buyRows"><div class="muted">No potential buy setups yet.</div></div>
+</section>
+<section class="panel alert-card setup-alert-card"><div class="top"><b>Potential sell setups</b><span class="note" id="sellMatches">0</span></div><div class="field"><label for="sellTf">SELL TIMEFRAME</label><select id="sellTf"><option value="1m">1 minute</option><option value="3m" selected>3 minutes</option><option value="5m">5 minutes</option></select></div>
+ <label class="direction-filter"><input id="sellNegative24h" type="checkbox"> Negative 24H change only</label>
+ <div class="field"><label>SELL TF PRICE CHANGE FILTER (%) · OPTIONAL</label><div class="oi-range"><input id="sellChangeMin" type="number" step="0.01" placeholder="Min %"><input id="sellChangeMax" type="number" step="0.01" placeholder="Max %"></div></div><label class="direction-filter"><input id="sellEmaCompare" type="checkbox" checked> Compare EMA 7 &lt; 25 &lt; 99 on Sell timeframe</label><div class="note" id="sellEmaSummary">EMA comparison will appear after scanning.</div>
+ <div class="note" id="sellSummary">—</div><div class="alert-lines" id="sellRows"><div class="muted">No potential sell setups yet.</div></div>
+ <div class="price-direction-block" style="margin-top:14px"><div class="top"><b class="price-alert-bear">24H HIGH REJECTION · SHORT WATCH</b><span class="note" id="highRejectCount">0/10</span></div><div class="note">Within 1% of rolling 24H high, then a completed 1M candle closes bearish.</div><div class="alert-lines" id="highRejectRows"><div class="muted">Waiting for 24H high rejection signals.</div></div></div>
+</section>
 </div>
 <section class="panel">
  <div class="top"><b>RSI filter matches</b><span class="note">Both conditions must pass: 3M RSI ≥ threshold AND 5M RSI ≥ threshold</span></div>
@@ -154,7 +139,7 @@ table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;
 const API='https://fapi.binance.com';
 const $=id=>document.getElementById(id);
 const SETTINGS_KEY='rsi-monitor-settings-v1';
-const settingIds=['priceChangeThreshold','universeMode','universeSize','topCount','bottomCount','volume','period','buyTf','buy2Tf','sellTf','buy2ChangeMin','buy2ChangeMax','buy2EmaCompare','buy2Positive24h','buy2RsiMin','buy2RsiMax','buy2MacdCandles','buyChangeMin','buyChangeMax','sellChangeMin','sellChangeMax','buyEmaCompare','sellEmaCompare','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','oi1Enabled','oi1Min','oi1Max','oi3Enabled','oi3Min','oi3Max','oi5Enabled','oi5Min','oi5Max','negativeMacdRsi','workers','refresh','continuous','buyPositive24h','sellNegative24h'];
+const settingIds=['priceChangeThreshold','universeMode','universeSize','topCount','bottomCount','volume','period','buyTf','sellTf','buyChangeMin','buyChangeMax','sellChangeMin','sellChangeMax','buyEmaCompare','sellEmaCompare','min3','min5','buyRsiMin','buyRsiMax','macdCandles','sellRsiMin','sellRsiMax','sellMacdCandles','oi1Enabled','oi1Min','oi1Max','oi3Enabled','oi3Min','oi3Max','oi5Enabled','oi5Min','oi5Max','negativeMacdRsi','workers','refresh','continuous','buyPositive24h','sellNegative24h'];
 function loadSettings(){
  try{
   const saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
@@ -193,21 +178,20 @@ const oiSamples=new Map();
 let requestConcurrency=8,activeRequests=0,requestWaiters=[],rateLimitUntil=0;
 const performance={restRequests:0,cacheHits:0,cacheMisses:0,activeWorkers:0,peakWorkers:0,history:[],last:null,coinTimes:new Map(),startedJobs:0,finishedJobs:0,checkedJobs:0,failures:0,startedJobKeys:new Set(),totalJobs:0,scanStarted:0,universeMs:0};
 let priceWs=new Map(),priceWsSymbols=[],priceWsSymbolsKey='',priceWsRetry=1000,priceWsStopped=true,priceWsOpen=0;
-const priceAlertedCandles=new Map(),priceAlertHistory=[];const latest24hChangeBySymbol=new Map();const rolling24hHighs=new Map(),highRejectAlertedCandles=new Map(),highRejectHistory=[];let priceUpdateCount=0,priceLastUpdate='—',priceLatestMove='—';let priceRawMessageCount=0,priceProcessingErrors=0,priceFirstRawMessage='';let priceSocketEvents=[],priceSocketIssues=[];
-function change24hClass(change){return Number.isFinite(Number(change))?(Number(change)>0?'coin-24h-positive':Number(change)<0?'coin-24h-negative':'coin-24h-neutral'):'coin-24h-neutral'}
- function renderPriceAlerts(){
+const priceAlertedCandles=new Map(),priceAlertHistory=[];const rolling24hHighs=new Map(),highRejectAlertedCandles=new Map(),highRejectHistory=[];let priceUpdateCount=0,priceLastUpdate='—',priceLatestMove='—';let priceRawMessageCount=0,priceProcessingErrors=0,priceFirstRawMessage='';let priceSocketEvents=[],priceSocketIssues=[];
+function renderPriceAlerts(){
  const bullish=priceAlertHistory.filter(a=>a.side==='BULLISH').slice(0,10),bearish=priceAlertHistory.filter(a=>a.side==='BEARISH').slice(0,10);
  $('priceAlertCount').textContent=String(priceAlertHistory.length);
  $('priceCombinedCount').textContent=String(priceAlertHistory.length);
  $('priceBullCount').textContent=String(bullish.length)+' alerts';
  $('priceBearCount').textContent=String(bearish.length)+' alerts';
- const line=a=>'<div class="alert-line"><strong class="'+change24hClass(latest24hChangeBySymbol.get(a.symbol))+'">'+a.symbol+'</strong><span class="line-meta">'+(a.change>=0?'+':'')+a.change.toFixed(2)+'% · '+a.time+'</span></div>';
+ const line=a=>'<div class="alert-line"><strong class="price-alert-'+(a.side==='BULLISH'?'bull':'bear')+'">'+a.symbol+'</strong><span class="line-meta">'+(a.change>=0?'+':'')+a.change.toFixed(2)+'% · '+a.time+'</span></div>';
  $('priceBullRows').innerHTML=bullish.length?bullish.map(line).join(''):'<div class="muted">No bullish 1M alerts yet.</div>';
  $('priceBearRows').innerHTML=bearish.length?bearish.map(line).join(''):'<div class="muted">No bearish 1M alerts yet.</div>';
 }
 function renderHighRejectAlerts(){
  $('highRejectCount').textContent=highRejectHistory.length+'/10';
- $('highRejectRows').innerHTML=highRejectHistory.length?highRejectHistory.map(a=>'<div class="alert-line"><strong class="'+change24hClass(latest24hChangeBySymbol.get(a.symbol))+'">'+a.symbol+'</strong><span class="line-meta">−'+a.distance.toFixed(2)+'% from 24H high · '+a.time+'</span></div>').join(''):'<div class="muted">No 24H high rejection signals yet.</div>';
+ $('highRejectRows').innerHTML=highRejectHistory.length?highRejectHistory.map(a=>'<div class="alert-line"><strong class="price-alert-bear">'+a.symbol+'</strong><span class="line-meta">−'+a.distance.toFixed(2)+'% from 24H high · '+a.time+'</span></div>').join(''):'<div class="muted">No 24H high rejection signals yet.</div>';
 }
 function updatePriceStreamStatus(){
  const total=Math.ceil(priceWsSymbols.length/40);
@@ -549,23 +533,23 @@ function renderPerformance(){
  $('perfMissing').textContent=p.missingJobs.length?'Not-started jobs: '+p.missingJobs.join(', '):'All selected symbol/timeframe jobs were started.';
  $('perfHistory').innerHTML=performance.history.slice().reverse().map((x,i)=>'<tr><td>'+(performance.history.length-i)+'</td><td>'+x.workers+'</td><td>'+x.duration.toFixed(1)+'s</td><td>'+x.coins+'</td><td>'+x.startedJobs+'/'+x.totalJobs+'</td><td>'+x.finishedJobs+'</td><td>'+x.failures+'</td><td>'+x.notStarted+'</td><td>'+x.cacheHits+'</td></tr>').join('')||'<tr><td colspan="9">No completed scans yet.</td></tr>';
 }
-const alertFirstSeen={matches:new Map(),buys:new Map(),buy2:new Map(),sells:new Map(),negativeMacd:new Map()};
-const retainedBuySetups=new Map(),retainedBuy2Setups=new Map(),retainedSellSetups=new Map();
+const alertFirstSeen={matches:new Map(),buys:new Map(),sells:new Map(),negativeMacd:new Map()};
+const retainedBuySetups=new Map(),retainedSellSetups=new Map();
 function retainQualifiedSetups(rows,side,tf,window,initialFilter=()=>true){
- const store=side==='buy'?retainedBuySetups:side==='buy2'?retainedBuy2Setups:retainedSellSetups;
+ const store=side==='buy'?retainedBuySetups:retainedSellSetups;
  const current=new Map(rows.map(x=>[x.symbol,x]));
  for(const [key,record] of store){
   if(record.tf!==tf)continue;
   const row=current.get(record.symbol);
   if(!row)continue;
-  const state=side==='sell'?row.sellState:row[side+'State'];
-  const expected=side==='sell'?'down':'up';
+  const state=side==='buy'?row.buyState:row.sellState;
+  const expected=side==='buy'?'up':'down';
   if(!state||state.crossType!==expected||state.crossTime!==record.crossTime||state.age>window||state.age<1){store.delete(key);continue}
   record.row={...row,[side+'State']:{...state,qualifies:true}};
   record.age=state.age;
  }
  for(const row of rows){
-  const state=side==='sell'?row.sellState:row[side+'State'],expected=side==='sell'?'down':'up';
+  const state=side==='buy'?row.buyState:row.sellState,expected=side==='buy'?'up':'down';
   if(!state||!state.qualifies||state.crossType!==expected||!Number.isFinite(state.crossTime))continue;
   const key=row.symbol+'|'+tf;
   if(store.has(key))continue;
@@ -580,11 +564,6 @@ function newestFirst(items,tracker){
  for(const x of items){if(!tracker.has(x.symbol))tracker.set(x.symbol,{time:Date.now(),sequence:++alertSequence})}
  for(const symbol of tracker.keys()){if(!active.has(symbol))tracker.delete(symbol)}
  return [...items].sort((a,b)=>tracker.get(b.symbol).time-tracker.get(a.symbol).time||tracker.get(b.symbol).sequence-tracker.get(a.symbol).sequence);
-}
-function renderFixedSetupRows(items,renderRow){
- const header='<div class="setup-columns header"><span>COIN</span><span>TF %</span><span>24H %</span><span>RSI</span><span>EMA</span><span>CANDLES</span></div>';
- const rows=Array.from({length:10},(_,i)=>items[i]?renderRow(items[i]):'<div class="setup-columns data setup-empty" aria-hidden="true"><strong class="setup-coin">&nbsp;</strong><span class="setup-value">&nbsp;</span><span class="setup-value">&nbsp;</span><span class="setup-value">&nbsp;</span><span class="setup-value">&nbsp;</span><span class="setup-value">&nbsp;</span></div>');
- return header+rows.join('');
 }
 async function runScan(){
  if(scanBusy)return;scanBusy=true;stopRequested=false;setRunningButton(running);$('scanned').textContent='0';
@@ -602,7 +581,6 @@ async function runScan(){
   const minVol=Math.max(0,Number($('volume').value)||0);
   const eligible=info.symbols.filter(s=>s.status==='TRADING'&&s.quoteAsset==='USDT'&&s.marginAsset==='USDT').map(s=>{const t=tickerMap.get(s.symbol);return t?{symbol:s.symbol,volume:Number(t.quoteVolume)||0,change:Number(t.priceChangePercent)||0}:null}).filter(x=>x&&x.volume>=minVol);
   const eligibleCount=eligible.length;
-   latest24hChangeBySymbol.clear();eligible.forEach(x=>latest24hChangeBySymbol.set(x.symbol,x.change));
   if(running){priceWsStopped=false;updatePriceStream(eligible.map(x=>x.symbol))}
   $('eligible').textContent=eligibleCount;
   const ranked=[...eligible].sort((a,b)=>b.change-a.change);
@@ -617,7 +595,7 @@ async function runScan(){
   gainers.forEach(x=>selectedMap.set(x.symbol,x));
   losers.forEach(x=>{if(!selectedMap.has(x.symbol))selectedMap.set(x.symbol,x)});
   let universe=(mode==='ema'?[...new Map([...ranked.slice(0,50),...ranked.slice(-50)].map(x=>[x.symbol,x])).values()]:[...selectedMap.values()].sort((a,b)=>Math.abs(b.change)-Math.abs(a.change)).sort((a,b)=>a.change-b.change)).map((x,i)=>({...x,universeNumber:i+1}));
-  const retainedSymbols=new Set([...retainedBuySetups.values(),...retainedBuy2Setups.values(),...retainedSellSetups.values()].map(x=>x.symbol));
+  const retainedSymbols=new Set([...retainedBuySetups.values(),...retainedSellSetups.values()].map(x=>x.symbol));
   const scanSymbols=new Set(universe.map(x=>x.symbol));
   for(const symbol of retainedSymbols){if(scanSymbols.has(symbol))continue;const market=eligible.find(x=>x.symbol===symbol);if(market){universe.push({...market,retainedSetup:true});scanSymbols.add(symbol);}}
   const candidateUniverse=universe;
@@ -628,13 +606,12 @@ async function runScan(){
   $('universeRows').innerHTML=universe.length?universe.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>—</td><td><b>'+x.symbol+'</b></td><td>—</td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">Not enough eligible coins to build a universe.</td></tr>';
    const period=Math.max(2,Math.min(100,Number($('period').value)||14));
   const buyTf=['1m','3m','5m'].includes($('buyTf').value)?$('buyTf').value:'3m';
-  const buy2Tf=['1m','3m','5m'].includes($('buy2Tf').value)?$('buy2Tf').value:'3m';
   const sellTf=['1m','3m','5m'].includes($('sellTf').value)?$('sellTf').value:'3m';
   const workers=Math.max(1,Math.min(20,Number($('workers').value)||8));
   const min3=Math.max(0,Math.min(100,Number($('min3').value)||0));
   const min5=Math.max(0,Math.min(100,Number($('min5').value)||0));
   $('filterSummary').textContent='3M ≥ '+fmt(min3)+' · 5M ≥ '+fmt(min5);
-  setStatus('Scanning '+universe.length+' USDT-margined USDⓈ-M contracts · Potential Buy 1: '+buyTf.toUpperCase()+' · Potential Buy 2: '+buy2Tf.toUpperCase()+' · Potential Sell: '+sellTf.toUpperCase()+' · RSI comparison: 3m + 5m…');
+  setStatus('Scanning '+universe.length+' USDT-margined USDⓈ-M contracts · Potential Buy: '+buyTf.toUpperCase()+' · Potential Sell: '+sellTf.toUpperCase()+' · RSI comparison: 3m + 5m…');
   const intervals=['1m','3m','5m','15m','1h','4h'];
   if(running)updateCoreMarketStream(candidateUniverse.map(x=>x.symbol));
   const timeframeJobs=universe.flatMap(item=>intervals.map(tf=>({symbol:item.symbol,tf})));
@@ -661,19 +638,15 @@ async function runScan(){
    if(fetchError||klines.some(rows=>!rows||!rows.length))return {...item,error:fetchError||'Incomplete timeframe data'};
    const closes=Object.fromEntries(intervals.map((tf,i)=>[tf,klines[i].slice(0,-1).map(x=>Number(x[4]))])); // Exclude Binance's still-forming candle: all indicators use closed candles only.
    const c1=closes['1m'],c3=closes['3m'],c5=closes['5m'],c15=closes['15m'],c1h=closes['1h'],c4h=closes['4h'];
-   const buyCloses=closes[buyTf],buy2Closes=closes[buy2Tf],sellCloses=closes[sellTf];
-   const buyTimes=klines[intervals.indexOf(buyTf)].slice(0,-1).map(x=>Number(x[0])),buy2Times=klines[intervals.indexOf(buy2Tf)].slice(0,-1).map(x=>Number(x[0])),sellTimes=klines[intervals.indexOf(sellTf)].slice(0,-1).map(x=>Number(x[0]));
+   const buyCloses=closes[buyTf],sellCloses=closes[sellTf];
+   const buyTimes=klines[intervals.indexOf(buyTf)].slice(0,-1).map(x=>Number(x[0])),sellTimes=klines[intervals.indexOf(sellTf)].slice(0,-1).map(x=>Number(x[0]));
    const required=Math.max(1,Math.min(100,Number($('macdCandles').value)||5));
    const buyMin=Math.max(0,Math.min(100,Number($('buyRsiMin').value)||0));
    const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
-   const buy2Required=Math.max(1,Math.min(100,Number($('buy2MacdCandles').value)||5));
-   const buy2Min=Math.max(0,Math.min(100,Number($('buy2RsiMin').value)||0));
-   const buy2Max=Math.max(0,Math.min(100,Number($('buy2RsiMax').value)||100));
-   const buyCandle=klines[intervals.indexOf(buyTf)]?.slice(0,-1).at(-1),buy2Candle=klines[intervals.indexOf(buy2Tf)]?.slice(0,-1).at(-1),sellCandle=klines[intervals.indexOf(sellTf)]?.slice(0,-1).at(-1);
+   const buyCandle=klines[intervals.indexOf(buyTf)]?.slice(0,-1).at(-1),sellCandle=klines[intervals.indexOf(sellTf)]?.slice(0,-1).at(-1);
    const buyPriceChange=buyCandle&&Number(buyCandle[1])>0?(Number(buyCandle[4])-Number(buyCandle[1]))/Number(buyCandle[1])*100:NaN;
-   const buy2PriceChange=buy2Candle&&Number(buy2Candle[1])>0?(Number(buy2Candle[4])-Number(buy2Candle[1]))/Number(buy2Candle[1])*100:NaN;
    const sellPriceChange=sellCandle&&Number(sellCandle[1])>0?(Number(sellCandle[4])-Number(sellCandle[1]))/Number(sellCandle[1])*100:NaN;
-   return {...item,buyTf,buy2Tf,sellTf,buyPriceChange,buy2PriceChange,sellPriceChange,buy2Rsi:rsiWilder(buy2Closes,period),buy2Ema7:emaLast(buy2Closes,7),buy2Ema25:emaLast(buy2Closes,25),buy2Ema99:emaLast(buy2Closes,99),buy2State:potentialBuyState(buy2Closes,period,buy2Min,buy2Max,buy2Required,buy2Times),buyEma7:emaLast(buyCloses,7),buyEma25:emaLast(buyCloses,25),buyEma99:emaLast(buyCloses,99),sellEma7:emaLast(sellCloses,7),sellEma25:emaLast(sellCloses,25),sellEma99:emaLast(sellCloses,99),ema7_15:emaLast(c15,7),ema25_15:emaLast(c15,25),ema99_15:emaLast(c15,99),st15:supertrend15mDirection(klines[3].slice(0,-1)),r1:rsiWilder(c1,period),r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),sellRsi:rsiWilder(sellCloses,period),buyState:potentialBuyState(buyCloses,period,buyMin,buyMax,required,buyTimes),sellState:potentialSellState(sellCloses,period,Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33)),Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42)),Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5)),sellTimes),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
+   return {...item,buyTf,sellTf,buyPriceChange,sellPriceChange,buyEma7:emaLast(buyCloses,7),buyEma25:emaLast(buyCloses,25),buyEma99:emaLast(buyCloses,99),sellEma7:emaLast(sellCloses,7),sellEma25:emaLast(sellCloses,25),sellEma99:emaLast(sellCloses,99),ema7_15:emaLast(c15,7),ema25_15:emaLast(c15,25),ema99_15:emaLast(c15,99),st15:supertrend15mDirection(klines[3].slice(0,-1)),r1:rsiWilder(c1,period),r3:rsiWilder(c3,period),r5:rsiWilder(c5,period),r15:rsiWilder(c15,period),r1h:rsiWilder(c1h,period),r4h:rsiWilder(c4h,period),buyRsi:rsiWilder(buyCloses,period),sellRsi:rsiWilder(sellCloses,period),buyState:potentialBuyState(buyCloses,period,buyMin,buyMax,required,buyTimes),sellState:potentialSellState(sellCloses,period,Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33)),Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42)),Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5)),sellTimes),macd:macdState(buyCloses,required),macd5:macdState(c5,required)};
   });
   if(mode==='ema'){
    const valid=results.filter(x=>x&&!x.error&&Number.isFinite(x.ema7_15)&&Number.isFinite(x.ema25_15)&&Number.isFinite(x.ema99_15)&&x.ema99_15>0);
@@ -684,7 +657,7 @@ async function runScan(){
    $('universeRule').textContent='Top 50 gainers + bottom 50 losers · up to 20 bullish + 20 bearish · ranked by EMA spread';
   }
      const scanSelectedSymbols=new Set(candidateUniverse.map(x=>x.symbol));
-   const retainedUniverseSymbols=new Set([...retainedBuySetups.values(),...retainedBuy2Setups.values(),...retainedSellSetups.values()].map(x=>x.symbol));
+   const retainedUniverseSymbols=new Set([...retainedBuySetups.values(),...retainedSellSetups.values()].map(x=>x.symbol));
    const universeDiagHtml=ranked.map((item,index)=>{
     const rank=index+1,rankBottom=ranked.length-index;
     const selected=scanSelectedSymbols.has(item.symbol);
@@ -694,7 +667,7 @@ async function runScan(){
      else if(mode==='percent')reason='24H change is inside ±'+fmt(rawSize)+'% threshold';
      else if(mode==='ema')reason='Outside Top 50 / Bottom 50 EMA candidate pool';
     }
-    return '<tr><td>#'+rank+'</td><td><b class="'+change24hClass(item.change)+'">'+item.symbol+'</b></td><td class="num">'+(item.change>=0?'+':'')+fmt(item.change)+'%</td><td>'+fmt(item.volume)+'</td><td>'+(selected?'<b>SELECTED</b>':'NOT SELECTED')+'</td><td>'+reason+'</td></tr>';
+    return '<tr><td>#'+rank+'</td><td><b>'+item.symbol+'</b></td><td class="num">'+(item.change>=0?'+':'')+fmt(item.change)+'%</td><td>'+fmt(item.volume)+'</td><td>'+(selected?'<b>SELECTED</b>':'NOT SELECTED')+'</td><td>'+reason+'</td></tr>';
    }).join('');
    const missedCount=ranked.filter(item=>!scanSelectedSymbols.has(item.symbol)).length;
    $('universeDiagMode').textContent=mode==='percent'?'24H threshold ±'+fmt(rawSize)+'%':mode==='count'?'Top '+topCount+' / Bottom '+bottomCount:'15M EMA · Top/Bottom 50 → Top 20 each side';
@@ -740,7 +713,7 @@ async function runScan(){
   const oiFilteredGood=good.filter(passesOiFilters);
   const matches=newestFirst(oiFilteredGood.filter(x=>x.r3>=min3&&x.r5>=min5),alertFirstSeen.matches);
   $('matches').textContent=matches.length;
-  $('rows').innerHTML=matches.length?matches.map(x=>'<tr><td><b class="'+change24hClass(x.change)+'">'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td><td>'+pill(x.r1)+'</td><td>'+pill(x.r3)+'</td><td>'+pill(x.r5)+'</td><td>'+pill(x.r15)+'</td><td>'+pill(x.r1h)+'</td><td>'+pill(x.r4h)+'</td><td>'+new Date().toLocaleTimeString()+'</td></tr>').join(''):'<tr><td colspan="12" class="muted">No coins currently meet both RSI thresholds.</td></tr>';
+  $('rows').innerHTML=matches.length?matches.map(x=>'<tr><td><b class="'+symbolStClass(x.st15)+'">'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+fmt(x.volume)+'</td><td>'+pill(x.r1)+'</td><td>'+pill(x.r3)+'</td><td>'+pill(x.r5)+'</td><td>'+pill(x.r15)+'</td><td>'+pill(x.r1h)+'</td><td>'+pill(x.r4h)+'</td><td>'+new Date().toLocaleTimeString()+'</td></tr>').join(''):'<tr><td colspan="12" class="muted">No coins currently meet both RSI thresholds.</td></tr>';
   const buyMin=Math.max(0,Math.min(100,Number($('buyRsiMin').value)||0));
   const buyMax=Math.max(0,Math.min(100,Number($('buyRsiMax').value)||100));
   const required=Math.max(1,Math.min(100,Number($('macdCandles').value)||5));
@@ -749,13 +722,6 @@ async function runScan(){
   const buyEmaPass=x=>buyEmaDirectionPass(x)&&Number.isFinite(x.buyEma99)&&x.buyEma25>x.buyEma99;
   const buyInitialFilter=x=>passesOiFilters(x)&&(!$('buyPositive24h').checked||x.change>0)&&(!$('buyEmaCompare').checked||buyEmaPass(x));
   const retainedBuys=retainQualifiedSetups(good,'buy',buyTf,required,buyInitialFilter);
-  const buy2Min=Math.max(0,Math.min(100,Number($('buy2RsiMin').value)||0));
-  const buy2Max=Math.max(0,Math.min(100,Number($('buy2RsiMax').value)||100));
-  const buy2Required=Math.max(1,Math.min(100,Number($('buy2MacdCandles').value)||5));
-  const buy2ChangeMin=$('buy2ChangeMin').value.trim()===''?null:Number($('buy2ChangeMin').value),buy2ChangeMax=$('buy2ChangeMax').value.trim()===''?null:Number($('buy2ChangeMax').value);
-  const buy2EmaPass=x=>Number.isFinite(x.buy2Ema7)&&Number.isFinite(x.buy2Ema25)&&x.buy2Ema7>x.buy2Ema25&&Number.isFinite(x.buy2Ema99)&&x.buy2Ema25>x.buy2Ema99;
-  const buy2InitialFilter=x=>passesOiFilters(x)&&(!$('buy2Positive24h').checked||x.change>0)&&(!$('buy2EmaCompare').checked||buy2EmaPass(x));
-  const retainedBuy2s=retainQualifiedSetups(good,'buy2',buy2Tf,buy2Required,buy2InitialFilter);
   const buyCandidatesAll=newestFirst(retainedBuys,alertFirstSeen.buys);
   const buyCandidates=buyCandidatesAll.filter(x=>Number.isFinite(x.buyPriceChange)&&(buyChangeMin===null||x.buyPriceChange>=buyChangeMin)&&(buyChangeMax===null||x.buyPriceChange<=buyChangeMax));
   const buyEmaPassCount=buyCandidates.filter(buyEmaPass).length;
@@ -764,16 +730,7 @@ async function runScan(){
   const buys=buyCandidates.slice(0,10);
   $('buyMatches').textContent=buys.length;
   $('buySummary').textContent=buyTf.toUpperCase()+' RSI '+fmt(buyMin)+'–'+fmt(buyMax)+' · qualify after bullish MACD cross; retain until bearish cross or expiry · '+required+' candles'+($('buyPositive24h').checked?' · positive 24H change only':'');
-  $('buyRows').classList.add('setup-entry-list');$('buyRows').innerHTML=renderFixedSetupRows(buys,x=>'<div class="setup-columns data"><strong class="setup-coin '+change24hClass(x.change)+'">'+x.symbol+'</strong><span class="setup-value">'+(x.buyPriceChange>=0?'+':'')+fmt(x.buyPriceChange)+'%</span><span class="setup-value">'+(x.change>=0?'+':'')+fmt(x.change)+'%</span><span class="setup-value">'+fmt(x.buyRsi)+'</span><span class="setup-value '+(buyEmaPass(x)?'price-alert-bull':'price-alert-bear')+'">'+($('buyEmaCompare').checked?(buyEmaPass(x)?'PASS':'FAIL'):'—')+'</span><span class="setup-value">'+x.buyState.age+'/'+required+'</span></div>');
-  const buy2CandidatesAll=newestFirst(retainedBuy2s,alertFirstSeen.buy2);
-  const buy2Candidates=buy2CandidatesAll.filter(x=>Number.isFinite(x.buy2PriceChange)&&(buy2ChangeMin===null||x.buy2PriceChange>=buy2ChangeMin)&&(buy2ChangeMax===null||x.buy2PriceChange<=buy2ChangeMax));
-  const buy2EmaPassCount=buy2Candidates.filter(buy2EmaPass).length;
-  $('buy2EmaSummary').textContent=$('buy2EmaCompare').checked?'Retained setups persist after later EMA changes · Current full EMA pass: '+buy2EmaPassCount:'EMA comparison off · Retained setups remain until opposite cross or expiry';
-  const buy2s=buy2Candidates.slice(0,10);
-  $('buy2Matches').textContent=buy2s.length;
-  $('buy2Summary').textContent=buy2Tf.toUpperCase()+' RSI '+fmt(buy2Min)+'–'+fmt(buy2Max)+' · qualify after bullish MACD cross; retain until bearish cross or expiry · '+buy2Required+' candles'+($('buy2Positive24h').checked?' · positive 24H change only':'');
-  $('buy2Rows').classList.add('setup-entry-list');$('buy2Rows').innerHTML=renderFixedSetupRows(buy2s,x=>'<div class="setup-columns data"><strong class="setup-coin '+change24hClass(x.change)+'">'+x.symbol+'</strong><span class="setup-value">'+(x.buy2PriceChange>=0?'+':'')+fmt(x.buy2PriceChange)+'%</span><span class="setup-value">'+(x.change>=0?'+':'')+fmt(x.change)+'%</span><span class="setup-value">'+fmt(x.buy2Rsi)+'</span><span class="setup-value '+(buy2EmaPass(x)?'price-alert-bull':'price-alert-bear')+'">'+($('buy2EmaCompare').checked?(buy2EmaPass(x)?'PASS':'FAIL'):'—')+'</span><span class="setup-value">'+x.buy2State.age+'/'+buy2Required+'</span></div>');
-
+  $('buyRows').innerHTML=buys.length?'<div class="setup-columns header"><span>COIN</span><span>TF %</span><span>24H %</span><span>RSI</span><span>EMA</span><span>CANDLES</span></div>'+buys.map(x=>'<div class="setup-columns data"><strong class="setup-coin '+symbolStClass(x.st15)+'">'+x.symbol+'</strong><span class="setup-value">'+(x.buyPriceChange>=0?'+':'')+fmt(x.buyPriceChange)+'%</span><span class="setup-value">'+(x.change>=0?'+':'')+fmt(x.change)+'%</span><span class="setup-value">'+fmt(x.buyRsi)+'</span><span class="setup-value '+(buyEmaPass(x)?'price-alert-bull':'price-alert-bear')+'">'+($('buyEmaCompare').checked?(buyEmaPass(x)?'PASS':'FAIL'):'—')+'</span><span class="setup-value">'+x.buyState.age+'/'+required+'</span></div>').join(''):'<div class="muted">No active potential buy setups.</div>';
   const sellMin=Math.max(0,Math.min(100,Number($('sellRsiMin').value)||33));
   const sellMax=Math.max(0,Math.min(100,Number($('sellRsiMax').value)||42));
   const sellRequired=Math.max(1,Math.min(100,Number($('sellMacdCandles').value)||5));
@@ -782,7 +739,7 @@ async function runScan(){
   const sellEmaPass=x=>sellEmaDirectionPass(x)&&Number.isFinite(x.sellEma99)&&x.sellEma25<x.sellEma99;
   const sellInitialFilter=x=>passesOiFilters(x)&&(!$('sellNegative24h').checked||x.change<0)&&(!$('sellEmaCompare').checked||sellEmaPass(x));
   const signalRejectReason=(x,side,window)=>{
-   const state=side==='sell'?x.sellState:x[side+'State'],expected=side==='sell'?'down':'up';
+   const state=side==='buy'?x.buyState:x.sellState,expected=side==='buy'?'up':'down';
    if(!state)return 'Indicator state unavailable';
    if(state.status==='insufficient-data')return 'Insufficient candle history: '+state.loadedCandles+'/'+state.requiredCandles+' candles loaded';
    if(!Number.isFinite(state.crossIndex)||state.crossIndex<0)return 'No MACD crossover in loaded candles';
@@ -790,29 +747,26 @@ async function runScan(){
    if(state.age<1||state.age>window)return 'Crossover outside '+window+'-candle window';
    if(!state.qualifies)return 'No qualifying RSI + MACD candle from crossover onward';
    if(!passesOiFilters(x))return 'Blocked by enabled Open Interest filter';
-   if(side==='buy'||side==='buy2'){
-    const prefix=side==='buy'?'buy':'buy2';
-    const emaPass=side==='buy'?buyEmaPass(x):buy2EmaPass(x);
-    if($(prefix+'Positive24h').checked&&!(x.change>0))return '24H change is not positive';
-    if($(prefix+'EmaCompare').checked&&!emaPass)return 'EMA alignment is not 7 > 25 > 99';
+   if(side==='buy'){
+    if($('buyPositive24h').checked&&!(x.change>0))return '24H change is not positive';
+    if($('buyEmaCompare').checked&&!buyEmaPass(x))return 'EMA alignment is not 7 > 25 > 99';
    }else{
     if($('sellNegative24h').checked&&!(x.change<0))return '24H change is not negative';
     if($('sellEmaCompare').checked&&!sellEmaPass(x))return 'EMA alignment is not 7 < 25 < 99';
    }
-   if(side==='buy'&&(!Number.isFinite(x.buyPriceChange)||(buyChangeMin!==null&&x.buyPriceChange<buyChangeMin)||(buyChangeMax!==null&&x.buyPriceChange>buyChangeMax)))return 'Qualified — waiting for Buy 1 TF price-change filter';
-   if(side==='buy2'&&(!Number.isFinite(x.buy2PriceChange)||(buy2ChangeMin!==null&&x.buy2PriceChange<buy2ChangeMin)||(buy2ChangeMax!==null&&x.buy2PriceChange>buy2ChangeMax)))return 'Qualified — waiting for Buy 2 TF price-change filter';
+   if(side==='buy'&&(!Number.isFinite(x.buyPriceChange)||(buyChangeMin!==null&&x.buyPriceChange<buyChangeMin)||(buyChangeMax!==null&&x.buyPriceChange>buyChangeMax)))return 'Qualified — waiting for Buy TF price-change filter';
    if(side==='sell'&&(!Number.isFinite(x.sellPriceChange)||(sellChangeMin!==null&&x.sellPriceChange<sellChangeMin)||(sellChangeMax!==null&&x.sellPriceChange>sellChangeMax)))return 'Qualified — waiting for Sell TF price-change filter';
    return 'Qualified / retained — price filter passed';
   };
   const diagRows=[];
-  for(const x of results){if(!x)continue;for(const side of ['buy','buy2','sell']){
-   const state=side==='sell'?x.sellState:x[side+'State'],window=side==='sell'?sellRequired:required;
+  for(const x of results){if(!x)continue;for(const side of ['buy','sell']){
+   const state=side==='buy'?x.buyState:x.sellState,window=side==='buy'?required:sellRequired;
    const reason=x.error?'Candle data fetch failed: '+x.error:signalRejectReason(x,side,window);
-   diagRows.push({side,symbol:x.symbol,tf:side==='buy'?buyTf:side==='buy2'?buy2Tf:sellTf,state,reason,rsi:side==='buy'?x.buyRsi:side==='buy2'?x.buy2Rsi:x.sellRsi,error:!!x.error});
+   diagRows.push({side,symbol:x.symbol,tf:side==='buy'?buyTf:sellTf,state,reason,rsi:side==='buy'?x.buyRsi:x.sellRsi,error:!!x.error});
   }}
   const summarizeReasons=side=>{const counts={};for(const x of diagRows.filter(y=>y.side===side))counts[x.reason]=(counts[x.reason]||0)+1;return Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+': '+v).join(' · ')||'No crossover candidates';};
-  $('diagBuySummary').textContent='Buy 1 · '+summarizeReasons('buy')+' · Buy 2 · '+summarizeReasons('buy2');$('diagSellSummary').textContent=summarizeReasons('sell');$('diagScanned').textContent=results.length+' coins · '+diagRows.length+' side checks';
-  $('signalDiagnosticRows').innerHTML=diagRows.length?diagRows.sort((a,b)=>(a.side===b.side?0:a.side==='buy'?-1:1)||a.symbol.localeCompare(b.symbol)).slice(0,400).map(x=>'<tr><td>'+x.side.toUpperCase()+'</td><td><b class="'+change24hClass(results.find(r=>r.symbol===x.symbol)?.change)+'">'+x.symbol+'</b></td><td>'+x.tf.toUpperCase()+'</td><td>'+(x.state?.crossType?x.state.crossType.toUpperCase():'—')+'</td><td>'+(Number.isFinite(x.state?.age)?x.state.age+'/'+(x.side==='buy'?required:x.side==='buy2'?buy2Required:sellRequired):'—')+'</td><td>'+(Number.isFinite(x.rsi)?fmt(x.rsi):'—')+'</td><td>'+x.reason+'</td></tr>').join(''):'<tr><td colspan="7">No scanned coins available for diagnostics.</td></tr>';
+  $('diagBuySummary').textContent=summarizeReasons('buy');$('diagSellSummary').textContent=summarizeReasons('sell');$('diagScanned').textContent=results.length+' coins · '+diagRows.length+' side checks';
+  $('signalDiagnosticRows').innerHTML=diagRows.length?diagRows.sort((a,b)=>(a.side===b.side?0:a.side==='buy'?-1:1)||a.symbol.localeCompare(b.symbol)).slice(0,400).map(x=>'<tr><td>'+x.side.toUpperCase()+'</td><td><b>'+x.symbol+'</b></td><td>'+x.tf.toUpperCase()+'</td><td>'+(x.state?.crossType?x.state.crossType.toUpperCase():'—')+'</td><td>'+(Number.isFinite(x.state?.age)?x.state.age+'/'+(x.side==='buy'?required:sellRequired):'—')+'</td><td>'+(Number.isFinite(x.rsi)?fmt(x.rsi):'—')+'</td><td>'+x.reason+'</td></tr>').join(''):'<tr><td colspan="7">No scanned coins available for diagnostics.</td></tr>';
   const retainedSells=retainQualifiedSetups(good,'sell',sellTf,sellRequired,sellInitialFilter);
   const sellCandidatesAll=newestFirst(retainedSells,alertFirstSeen.sells);
   const sellCandidates=sellCandidatesAll.filter(x=>Number.isFinite(x.sellPriceChange)&&(sellChangeMin===null||x.sellPriceChange>=sellChangeMin)&&(sellChangeMax===null||x.sellPriceChange<=sellChangeMax));
@@ -822,14 +776,14 @@ async function runScan(){
   const sells=sellCandidates.slice(0,10);
   $('sellMatches').textContent=sells.length;
   $('sellSummary').textContent=sellTf.toUpperCase()+' RSI '+fmt(sellMin)+'–'+fmt(sellMax)+' · qualify after bearish MACD cross; retain until bullish cross or expiry · '+sellRequired+' candles'+($('sellNegative24h').checked?' · negative 24H change only':'');
-  $('sellRows').classList.add('setup-entry-list');$('sellRows').innerHTML=renderFixedSetupRows(sells,x=>'<div class="setup-columns data"><strong class="setup-coin '+change24hClass(x.change)+'">'+x.symbol+'</strong><span class="setup-value">'+(x.sellPriceChange>=0?'+':'')+fmt(x.sellPriceChange)+'%</span><span class="setup-value">'+(x.change>=0?'+':'')+fmt(x.change)+'%</span><span class="setup-value">'+fmt(x.sellRsi)+'</span><span class="setup-value '+(sellEmaPass(x)?'price-alert-bear':'price-alert-bull')+'">'+($('sellEmaCompare').checked?(sellEmaPass(x)?'PASS':'FAIL'):'—')+'</span><span class="setup-value">'+x.sellState.age+'/'+sellRequired+'</span></div>');
+  $('sellRows').innerHTML=sells.length?'<div class="setup-columns header"><span>COIN</span><span>TF %</span><span>24H %</span><span>RSI</span><span>EMA</span><span>CANDLES</span></div>'+sells.map(x=>'<div class="setup-columns data"><strong class="setup-coin '+symbolStClass(x.st15)+'">'+x.symbol+'</strong><span class="setup-value">'+(x.sellPriceChange>=0?'+':'')+fmt(x.sellPriceChange)+'%</span><span class="setup-value">'+(x.change>=0?'+':'')+fmt(x.change)+'%</span><span class="setup-value">'+fmt(x.sellRsi)+'</span><span class="setup-value '+(sellEmaPass(x)?'price-alert-bear':'price-alert-bull')+'">'+($('sellEmaCompare').checked?(sellEmaPass(x)?'PASS':'FAIL'):'—')+'</span><span class="setup-value">'+x.sellState.age+'/'+sellRequired+'</span></div>').join(''):'<div class="muted">No active potential sell setups.</div>';
   const rawNegativeMacdThreshold=Number($('negativeMacdRsi').value);
   const negativeMacdThreshold=Number.isFinite(rawNegativeMacdThreshold)?Math.max(0,Math.min(100,rawNegativeMacdThreshold)):70;
   $('negativeMacdRule').textContent='5M RSI at least '+negativeMacdThreshold+' AND MACD histogram below zero';
   $('negativeMacdTrigger').textContent='5M RSI ≥ '+negativeMacdThreshold+' · MACD histogram < 0';
   const negativeMacdAlerts=newestFirst(oiFilteredGood.filter(x=>x.r5>=negativeMacdThreshold&&x.macd5&&x.macd5.hist<0),alertFirstSeen.negativeMacd);
   $('negativeMacdMatches').textContent=negativeMacdAlerts.length;
-  $('negativeMacdRows').innerHTML=negativeMacdAlerts.length?negativeMacdAlerts.map(x=>'<tr><td><b class="'+change24hClass(x.change)+'">'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+pill(x.r1)+'</td><td>'+pill(x.r3)+'</td><td>'+pill(x.r5)+'</td><td class="error">'+x.macd5.hist.toPrecision(6)+'</td></tr>').join(''):'<tr><td colspan="7" class="muted">No coins currently meet the selected 5M RSI threshold with a negative MACD histogram.</td></tr>';
+  $('negativeMacdRows').innerHTML=negativeMacdAlerts.length?negativeMacdAlerts.map(x=>'<tr><td><b class="'+symbolStClass(x.st15)+'">'+x.symbol+'</b></td><td class="num">'+(x.change>=0?'+':'')+fmt(x.change)+'%</td><td>'+pill(x.r1)+'</td><td>'+pill(x.r3)+'</td><td>'+pill(x.r5)+'</td><td class="error">'+x.macd5.hist.toPrecision(6)+'</td></tr>').join(''):'<tr><td colspan="7" class="muted">No coins currently meet the selected 5M RSI threshold with a negative MACD histogram.</td></tr>';
   $('last').textContent=new Date().toLocaleTimeString();
   const errors=results.filter(x=>x&&x.error).length;
   const coinTimes=[...performance.coinTimes.entries()].map(([symbol,ms])=>({symbol,ms})).sort((a,b)=>a.ms-b.ms);
